@@ -14,9 +14,14 @@ interface TickerItem {
 function mapTickerType(eventType: string): string {
   switch (eventType) {
     case 'alert':
+    case 'strike':
+    case 'missile':
       return 'alert';
+    case 'thermal':
     case 'seismic':
       return 'thermal';
+    case 'social':
+      return 'social';
     default:
       return 'news';
   }
@@ -32,7 +37,7 @@ export async function GET() {
 
     const items: TickerItem[] = rows.map((e) => ({
       id: e.id,
-      text: `${e.title} — ${e.locationName}`,
+      text: e.locationName ? `${e.title} — ${e.locationName}` : e.title,
       type: mapTickerType(e.type),
       timestamp: e.timestamp,
     }));
