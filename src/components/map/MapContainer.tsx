@@ -25,6 +25,42 @@ const COUNTRY_LABELS: { name: string; lng: number; lat: number }[] = [
   { name: 'TURKEY', lng: 35.0, lat: 39.0 },
 ];
 
+const CITY_LABELS: { name: string; lng: number; lat: number; minZoom?: number }[] = [
+  // Major cities always visible (zoom >= 4)
+  { name: 'Baghdad', lng: 44.37, lat: 33.31 },
+  { name: 'Riyadh', lng: 46.72, lat: 24.63 },
+  { name: 'Tehran', lng: 51.39, lat: 35.69 },
+  { name: 'Cairo', lng: 31.24, lat: 30.04 },
+  { name: 'Ankara', lng: 32.86, lat: 39.93 },
+  { name: 'Amman', lng: 35.93, lat: 31.95 },
+  // Visible at zoom >= 5
+  { name: 'Tel Aviv', lng: 34.78, lat: 32.08, minZoom: 5 },
+  { name: 'Haifa', lng: 34.99, lat: 32.82, minZoom: 5 },
+  { name: 'Beirut', lng: 35.50, lat: 33.89, minZoom: 5 },
+  { name: 'Damascus', lng: 36.28, lat: 33.51, minZoom: 5 },
+  { name: 'Isfahan', lng: 51.67, lat: 32.65, minZoom: 5 },
+  { name: 'Kuwait City', lng: 47.98, lat: 29.38, minZoom: 5 },
+  { name: 'Dubai', lng: 55.27, lat: 25.20, minZoom: 5 },
+  { name: 'Doha', lng: 51.53, lat: 25.29, minZoom: 5 },
+  { name: 'Manama', lng: 50.59, lat: 26.23, minZoom: 5 },
+  { name: 'Sanaa', lng: 44.21, lat: 15.35, minZoom: 5 },
+  // Visible at zoom >= 7
+  { name: 'Jerusalem', lng: 35.22, lat: 31.77, minZoom: 7 },
+  { name: 'Nazareth', lng: 35.30, lat: 32.70, minZoom: 7 },
+  { name: 'Nablus', lng: 35.26, lat: 32.22, minZoom: 7 },
+  { name: 'Hebron', lng: 35.10, lat: 31.53, minZoom: 7 },
+  { name: 'Gaza', lng: 34.47, lat: 31.50, minZoom: 7 },
+  { name: 'Beersheba', lng: 34.79, lat: 31.25, minZoom: 7 },
+  { name: 'Ashdod', lng: 34.65, lat: 31.80, minZoom: 7 },
+  { name: 'Ashkelon', lng: 34.57, lat: 31.67, minZoom: 7 },
+  { name: 'Natanz', lng: 51.92, lat: 33.51, minZoom: 7 },
+  { name: 'Basra', lng: 47.78, lat: 30.51, minZoom: 7 },
+  { name: 'Erbil', lng: 44.01, lat: 36.19, minZoom: 7 },
+  { name: 'Tyre', lng: 35.19, lat: 33.27, minZoom: 7 },
+  { name: 'Sidon', lng: 35.37, lat: 33.56, minZoom: 7 },
+  { name: 'Ramallah', lng: 35.21, lat: 31.90, minZoom: 7 },
+];
+
 const MAP_STYLE =
   process.env.NEXT_PUBLIC_MAP_STYLE ||
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
@@ -123,6 +159,31 @@ export default function MapContainer() {
         el.textContent = name;
         new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
       });
+
+      CITY_LABELS.forEach(({ name, lng, lat, minZoom }) => {
+        const el = document.createElement('div');
+        el.className = 'flex items-center gap-1 pointer-events-none select-none';
+        el.style.whiteSpace = 'nowrap';
+
+        const dot = document.createElement('span');
+        dot.style.cssText = 'width:4px;height:4px;border-radius:50%;background:#9ca3af;display:inline-block';
+        const label = document.createElement('span');
+        label.style.cssText = 'font-size:9px;color:rgba(255,255,255,0.5);font-weight:500';
+        label.textContent = name;
+        el.appendChild(dot);
+        el.appendChild(label);
+
+        new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+        // Hide markers below their minimum zoom
+        if (minZoom) {
+          const updateVisibility = () => {
+            el.style.display = map.getZoom() >= minZoom ? '' : 'none';
+          };
+          updateVisibility();
+          map.on('zoom', updateVisibility);
+        }
+      });
+
       setMapReady(true);
     });
 
