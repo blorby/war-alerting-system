@@ -73,7 +73,24 @@ interface AppState {
 
 let sseConnection: EventSource | null = null;
 
+let _lastEvents: EventData[] = [];
+let _lastFront = '';
+let _lastType = '';
+let _lastResult: EventData[] = [];
+
 export function selectFilteredEvents(state: AppState): EventData[] {
+  if (
+    state.events === _lastEvents &&
+    state.activeFront === _lastFront &&
+    state.activeType === _lastType
+  ) {
+    return _lastResult;
+  }
+
+  _lastEvents = state.events;
+  _lastFront = state.activeFront;
+  _lastType = state.activeType;
+
   let filtered = state.events;
 
   if (state.activeFront !== 'all') {
@@ -96,6 +113,7 @@ export function selectFilteredEvents(state: AppState): EventData[] {
     filtered = filtered.filter(e => e.type === state.activeType);
   }
 
+  _lastResult = filtered;
   return filtered;
 }
 

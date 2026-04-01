@@ -31,7 +31,7 @@ export default function AlertFeed() {
       <div className="flex-1 overflow-y-auto">
         {activeAlerts.length === 0 ? (
           <div className="px-3 py-4 text-center text-xs text-muted">
-            No active alerts
+            No active alerts at this time
           </div>
         ) : (
           activeAlerts.map((alert) => {

@@ -49,35 +49,43 @@ export default function ThreatPanel() {
         )}
       </div>
 
-      {overallScore !== undefined && (
-        <div className="flex items-center justify-center gap-1 py-2">
-          <span className="text-3xl font-bold">{overallScore.toFixed(1)}</span>
-          <span className="text-sm text-muted">/ 10</span>
+      {threat === null ? (
+        <div className="px-3 py-4 text-center text-xs text-muted">
+          Awaiting assessment...
         </div>
-      )}
-
-      <div className="space-y-0.5 px-3 pb-2">
-        {countries.map((c) => (
-          <div key={c.countryCode} className="flex items-center gap-2 py-0.5">
-            <span className="w-5 text-center text-sm">{c.flag}</span>
-            <span className="w-6 text-xs text-muted">{c.countryCode}</span>
-            <div className="flex-1">
-              <div className="h-1.5 w-full rounded-full bg-border">
-                <div
-                  className={`h-1.5 rounded-full ${scoreColor(c.score)} transition-all`}
-                  style={{ width: `${(c.score / 10) * 100}%` }}
-                />
-              </div>
+      ) : (
+        <>
+          {overallScore !== undefined && (
+            <div className="flex items-center justify-center gap-1 py-2">
+              <span className="text-3xl font-bold">{overallScore.toFixed(1)}</span>
+              <span className="text-sm text-muted">/ 10</span>
             </div>
-            <span className="w-7 text-right text-xs font-medium">
-              {c.score > 0 ? c.score.toFixed(1) : "-"}
-            </span>
-            <span className={`w-3 text-xs ${trendColors[c.trend]}`}>
-              {trendArrows[c.trend]}
-            </span>
+          )}
+
+          <div className="space-y-0.5 px-3 pb-2">
+            {countries.map((c) => (
+              <div key={c.countryCode} className="flex items-center gap-2 py-0.5">
+                <span className="w-5 text-center text-sm">{c.flag}</span>
+                <span className="w-6 text-xs text-muted">{c.countryCode}</span>
+                <div className="flex-1">
+                  <div className="h-1.5 w-full rounded-full bg-border">
+                    <div
+                      className={`h-1.5 rounded-full ${scoreColor(c.score)} transition-all`}
+                      style={{ width: `${(c.score / 10) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="w-7 text-right text-xs font-medium">
+                  {c.score > 0 ? c.score.toFixed(1) : "-"}
+                </span>
+                <span className={`w-3 text-xs ${trendColors[c.trend]}`}>
+                  {trendArrows[c.trend]}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </section>
   );
 }
