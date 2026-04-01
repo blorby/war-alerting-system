@@ -5,5 +5,7 @@ RUN npm ci
 COPY tsconfig.worker.json ./
 COPY src/ ./src/
 RUN npx tsc --project tsconfig.worker.json
+COPY src/lib/geo/city-coords.json dist/lib/geo/city-coords.json
+COPY src/lib/geo/districts.json dist/lib/geo/districts.json
 RUN npm prune --omit=dev
 CMD ["node", "dist/workers/oref-current.js"]
