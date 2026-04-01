@@ -144,6 +144,17 @@ interface AppState {
   announcementDismissed: boolean;
   soundEnabled: boolean;
 
+  // Playback state
+  playbackTime: Date | null;
+  playbackSpeed: number;
+  isPlaying: boolean;
+  setPlaybackTime: (time: Date | null) => void;
+  setPlaybackSpeed: (speed: number) => void;
+  setIsPlaying: (playing: boolean) => void;
+  goLive: () => void;
+  stepForward: (ms: number) => void;
+  stepBackward: (ms: number) => void;
+
   // Panel data fetchers
   fetchNews: () => Promise<void>;
   fetchSocial: () => Promise<void>;
@@ -161,13 +172,15 @@ let sseConnection: EventSource | null = null;
 let _lastEvents: EventData[] = [];
 let _lastFront = '';
 let _lastType = '';
+let _lastPlaybackTime: Date | null = null;
 let _lastResult: EventData[] = [];
 
 export function selectFilteredEvents(state: AppState): EventData[] {
   if (
     state.events === _lastEvents &&
     state.activeFront === _lastFront &&
-    state.activeType === _lastType
+    state.activeType === _lastType &&
+    state.playbackTime === _lastPlaybackTime
   ) {
     return _lastResult;
   }
@@ -175,6 +188,7 @@ export function selectFilteredEvents(state: AppState): EventData[] {
   _lastEvents = state.events;
   _lastFront = state.activeFront;
   _lastType = state.activeType;
+  _lastPlaybackTime = state.playbackTime;
 
   let filtered = state.events;
 
@@ -196,6 +210,11 @@ export function selectFilteredEvents(state: AppState): EventData[] {
 
   if (state.activeType !== 'all') {
     filtered = filtered.filter(e => e.type === state.activeType);
+  }
+
+  if (state.playbackTime) {
+    const cutoff = state.playbackTime.getTime();
+    filtered = filtered.filter(e => new Date(e.timestamp).getTime() <= cutoff);
   }
 
   _lastResult = filtered;
@@ -297,6 +316,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   announcement: null,
   announcementDismissed: false,
   soundEnabled: false,
+
+  playbackTime: null,
+  playbackSpeed: 1,
+  isPlaying: false,
+  setPlaybackTime: (time) => set({ playbackTime: time }),
+  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+  setIsPlaying: (playing) => set({ isPlaying: playing }),
+  goLive: () => set({ playbackTime: null, isPlaying: false }),
+  stepForward: (ms) => set((s) => {
+    const current = s.playbackTime ?? new Date();
+    return { playbackTime: new Date(current.getTime() + ms) };
+  }),
+  stepBackward: (ms) => set((s) => {
+    const current = s.playbackTime ?? new Date();
+    return { playbackTime: new Date(current.getTime() - ms) };
+  }),
 
   fetchNews: async () => {
     try {

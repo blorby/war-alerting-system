@@ -8,6 +8,7 @@ const TIME_RANGES = ["24h", "48h", "7d", "30d", "All"] as const;
 type TimeRange = (typeof TIME_RANGES)[number];
 
 const BUCKET_COUNT = 48;
+const SPEEDS = [1, 2, 5, 10];
 
 function getRangeMs(range: TimeRange): number | null {
   switch (range) {
@@ -29,7 +30,7 @@ interface TimelineBarProps {
 }
 
 export default function TimelineBar({
-  isLive = true,
+  isLive: _isLiveProp = true,
 }: TimelineBarProps) {
   const [now, setNow] = useState<Date>(() => new Date());
 
@@ -40,6 +41,27 @@ export default function TimelineBar({
   const [selectedRange, setSelectedRange] = useState<TimeRange>("24h");
   const [showShortcuts, setShowShortcuts] = useState(false);
   const events = useAppStore((state) => state.events);
+
+  const playbackTime = useAppStore((s) => s.playbackTime);
+  const playbackSpeed = useAppStore((s) => s.playbackSpeed);
+  const isPlaying = useAppStore((s) => s.isPlaying);
+  const setPlaybackTime = useAppStore((s) => s.setPlaybackTime);
+  const setPlaybackSpeed = useAppStore((s) => s.setPlaybackSpeed);
+  const setIsPlaying = useAppStore((s) => s.setIsPlaying);
+  const goLive = useAppStore((s) => s.goLive);
+  const stepForward = useAppStore((s) => s.stepForward);
+  const stepBackward = useAppStore((s) => s.stepBackward);
+
+  // Playback animation: advance time when playing
+  useEffect(() => {
+    if (!isPlaying || playbackTime === null) return;
+    const interval = setInterval(() => {
+      stepForward(1000 * playbackSpeed);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [isPlaying, playbackTime, playbackSpeed, stepForward]);
+
+  const displayTime = playbackTime ?? now;
 
   const buckets = useMemo(() => {
     if (events.length === 0) {
@@ -109,17 +131,46 @@ export default function TimelineBar({
       <div className="flex items-center gap-3 px-4 py-1">
         {/* Playback controls */}
         <div className="flex items-center gap-1">
-          <button className="rounded p-1 text-muted hover:text-foreground transition-colors" aria-label="Skip back" onClick={() => {}}>
+          <button
+            className="rounded p-1 text-muted hover:text-foreground transition-colors"
+            aria-label="Skip back"
+            onClick={() => {
+              const stepMs = getRangeMs(selectedRange) ? (getRangeMs(selectedRange)! / BUCKET_COUNT) : 3600000;
+              stepBackward(stepMs);
+            }}
+          >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
             </svg>
           </button>
-          <button className="rounded p-1 text-muted hover:text-foreground transition-colors" aria-label="Pause" onClick={() => {}}>
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
-            </svg>
+          <button
+            className="rounded p-1 text-muted hover:text-foreground transition-colors"
+            aria-label={isPlaying ? "Pause" : "Play"}
+            onClick={() => {
+              if (playbackTime === null) {
+                setPlaybackTime(new Date());
+              }
+              setIsPlaying(!isPlaying);
+            }}
+          >
+            {isPlaying ? (
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+              </svg>
+            ) : (
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+              </svg>
+            )}
           </button>
-          <button className="rounded p-1 text-muted hover:text-foreground transition-colors" aria-label="Skip forward" onClick={() => {}}>
+          <button
+            className="rounded p-1 text-muted hover:text-foreground transition-colors"
+            aria-label="Skip forward"
+            onClick={() => {
+              const stepMs = getRangeMs(selectedRange) ? (getRangeMs(selectedRange)! / BUCKET_COUNT) : 3600000;
+              stepForward(stepMs);
+            }}
+          >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 4.5l7.5 7.5-7.5 7.5m6-15l7.5 7.5-7.5 7.5" />
             </svg>
@@ -129,24 +180,38 @@ export default function TimelineBar({
         {/* LIVE button */}
         <button
           className={`rounded px-3 py-0.5 text-xs font-bold transition-colors ${
-            isLive
+            playbackTime === null
               ? "bg-green-500/20 text-green-400"
               : "bg-surface-elevated text-muted hover:text-foreground"
           }`}
-          onClick={() => {}}
+          onClick={goLive}
         >
           LIVE
         </button>
 
         {/* Speed */}
         <div className="flex items-center gap-0.5">
-          <button className="text-muted hover:text-foreground transition-colors" aria-label="Speed down" onClick={() => {}}>
+          <button
+            className="text-muted hover:text-foreground transition-colors"
+            aria-label="Speed down"
+            onClick={() => {
+              const idx = SPEEDS.indexOf(playbackSpeed);
+              if (idx > 0) setPlaybackSpeed(SPEEDS[idx - 1]);
+            }}
+          >
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
             </svg>
           </button>
-          <span className="text-xs text-muted min-w-[1.5rem] text-center">1x</span>
-          <button className="text-muted hover:text-foreground transition-colors" aria-label="Speed up" onClick={() => {}}>
+          <span className="text-xs text-muted min-w-[1.5rem] text-center">{playbackSpeed}x</span>
+          <button
+            className="text-muted hover:text-foreground transition-colors"
+            aria-label="Speed up"
+            onClick={() => {
+              const idx = SPEEDS.indexOf(playbackSpeed);
+              if (idx < SPEEDS.length - 1) setPlaybackSpeed(SPEEDS[idx + 1]);
+            }}
+          >
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
             </svg>
@@ -155,8 +220,8 @@ export default function TimelineBar({
 
         {/* Current time */}
         <span className="text-xs text-muted" suppressHydrationWarning>
-          {now.toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
-          {now.toLocaleTimeString("en-US", { hour12: false })}
+          {displayTime.toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
+          {displayTime.toLocaleTimeString("en-US", { hour12: false })}
         </span>
 
         {/* Time range buttons */}
