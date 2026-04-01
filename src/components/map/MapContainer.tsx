@@ -7,6 +7,7 @@ import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/geo/regions";
 import { useAppStore, selectFilteredEvents } from "@/lib/store";
 import { EVENT_TYPES } from "@/lib/constants";
 import districtsData from '@/lib/geo/districts.json';
+import polygonsData from '@/lib/geo/district-polygons.json';
 import MapFocus from "./MapFocus";
 import MapLayers from "./MapLayers";
 import MapLegend from "./MapLegend";
@@ -491,115 +492,95 @@ export default function MapContainer() {
     }
   }, [geoEvents, mapReady]);
 
-  // --- Alert zone polygons: load geojson once, then update severity ---
-  const polygonBaseRef = useRef<GeoJSON.FeatureCollection | null>(null);
-
-  // Load polygon geojson once when map is ready
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapReady) return;
-    if (map.getSource(POLYGONS_SOURCE)) return; // already loaded
-
-    (async () => {
-      try {
-        const res = await fetch('/district-polygons.geojson');
-        if (!res.ok) return;
-        const data: GeoJSON.FeatureCollection = await res.json();
-        polygonBaseRef.current = data;
-
-        // Initialize with empty severity
-        map.addSource(POLYGONS_SOURCE, { type: 'geojson', data });
-
-        const beforeLayer = map.getLayer(EVENTS_GLOW_LAYER) ? EVENTS_GLOW_LAYER : undefined;
-
-        map.addLayer(
-          {
-            id: POLYGONS_FILL_LAYER,
-            type: 'fill',
-            source: POLYGONS_SOURCE,
-            paint: {
-              'fill-color': [
-                'match',
-                ['get', 'severity'],
-                'critical', '#ef4444',
-                'moderate', '#f97316',
-                'info', '#3b82f6',
-                'cleared', '#22c55e',
-                'rgba(0,0,0,0)',
-              ] as unknown as maplibregl.ExpressionSpecification,
-              'fill-opacity': [
-                'match',
-                ['get', 'severity'],
-                'critical', 0.35,
-                'moderate', 0.3,
-                'info', 0.2,
-                'cleared', 0.15,
-                0,
-              ] as unknown as maplibregl.ExpressionSpecification,
-            },
-          },
-          beforeLayer,
-        );
-
-        map.addLayer(
-          {
-            id: POLYGONS_LINE_LAYER,
-            type: 'line',
-            source: POLYGONS_SOURCE,
-            paint: {
-              'line-color': [
-                'match',
-                ['get', 'severity'],
-                'critical', '#ef4444',
-                'moderate', '#f97316',
-                'info', '#3b82f6',
-                'cleared', '#22c55e',
-                'rgba(0,0,0,0)',
-              ] as unknown as maplibregl.ExpressionSpecification,
-              'line-width': 2,
-              'line-opacity': [
-                'match',
-                ['get', 'severity'],
-                'critical', 0.8,
-                'moderate', 0.6,
-                'info', 0.4,
-                'cleared', 0.3,
-                0,
-              ] as unknown as maplibregl.ExpressionSpecification,
-            },
-          },
-          beforeLayer,
-        );
-      } catch {
-        // ignore fetch errors
-      }
-    })();
-  }, [mapReady]);
-
-  // Update polygon severity whenever alert status changes
-  useEffect(() => {
-    const map = mapRef.current;
-    const baseData = polygonBaseRef.current;
-    if (!map || !mapReady || !baseData) return;
-
-    const source = map.getSource(POLYGONS_SOURCE) as maplibregl.GeoJSONSource | undefined;
-    if (!source) return;
-
-    // Deep clone and tag with severity
-    const updated: GeoJSON.FeatureCollection = {
+  // --- Alert zone polygons (static import, no async fetch) ---
+  const polygonGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
+    const base = polygonsData as unknown as GeoJSON.FeatureCollection;
+    return {
       type: 'FeatureCollection',
-      features: baseData.features.map((feature) => {
+      features: base.features.map((feature) => {
         const areaid = (feature.properties as Record<string, unknown>)?.areaid as number;
-        const severity = areaAlertStatus.get(areaid) ?? null;
+        const severity = areaAlertStatus.get(areaid) ?? 'none';
         return {
           ...feature,
           properties: { ...feature.properties, severity },
         };
       }),
     };
+  }, [areaAlertStatus]);
 
-    source.setData(updated);
-  }, [areaAlertStatus, mapReady]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const source = map.getSource(POLYGONS_SOURCE) as maplibregl.GeoJSONSource | undefined;
+
+    if (source) {
+      source.setData(polygonGeojson);
+    } else {
+      map.addSource(POLYGONS_SOURCE, { type: 'geojson', data: polygonGeojson });
+
+      const beforeLayer = map.getLayer(EVENTS_GLOW_LAYER) ? EVENTS_GLOW_LAYER : undefined;
+
+      map.addLayer(
+        {
+          id: POLYGONS_FILL_LAYER,
+          type: 'fill',
+          source: POLYGONS_SOURCE,
+          paint: {
+            'fill-color': [
+              'match',
+              ['get', 'severity'],
+              'critical', '#ef4444',
+              'moderate', '#f97316',
+              'info', '#3b82f6',
+              'cleared', '#22c55e',
+              'rgba(0,0,0,0)',
+            ] as unknown as maplibregl.ExpressionSpecification,
+            'fill-opacity': [
+              'match',
+              ['get', 'severity'],
+              'critical', 0.35,
+              'moderate', 0.3,
+              'info', 0.2,
+              'cleared', 0.15,
+              0,
+            ] as unknown as maplibregl.ExpressionSpecification,
+          },
+        },
+        beforeLayer,
+      );
+
+      map.addLayer(
+        {
+          id: POLYGONS_LINE_LAYER,
+          type: 'line',
+          source: POLYGONS_SOURCE,
+          paint: {
+            'line-color': [
+              'match',
+              ['get', 'severity'],
+              'critical', '#ef4444',
+              'moderate', '#f97316',
+              'info', '#3b82f6',
+              'cleared', '#22c55e',
+              'rgba(0,0,0,0)',
+            ] as unknown as maplibregl.ExpressionSpecification,
+            'line-width': 2,
+            'line-opacity': [
+              'match',
+              ['get', 'severity'],
+              'critical', 0.8,
+              'moderate', 0.6,
+              'info', 0.4,
+              'cleared', 0.3,
+              0,
+            ] as unknown as maplibregl.ExpressionSpecification,
+          },
+        },
+        beforeLayer,
+      );
+    }
+  }, [polygonGeojson, mapReady]);
 
   // --- Missile/strike trajectory arcs ---
   useEffect(() => {
