@@ -160,6 +160,9 @@ export default function MapContainer() {
 
   const LIVE_WINDOW_MS: Record<string, number> = { '15m': 15*60*1000, '1h': 60*60*1000, '3h': 3*60*60*1000 };
 
+  // Raw store events for polygon alert status (always show all alerts)
+  const allStoreEvents = useAppStore((s) => s.events);
+
   const filteredEvents = useAppStore(selectFilteredEvents);
   const liveWindow = useAppStore((s) => s.liveWindow);
   const playbackTime = useAppStore((s) => s.playbackTime);
@@ -192,7 +195,7 @@ export default function MapContainer() {
     const statusMap = new Map<number, string>();
     const severityRank: Record<string, number> = { critical: 3, moderate: 2, info: 1, cleared: 0 };
 
-    for (const e of events) {
+    for (const e of allStoreEvents) {
       if (e.type === 'alert' && e.locationName) {
         const district = districts[e.locationName];
         if (!district?.areaid) continue;
@@ -209,7 +212,7 @@ export default function MapContainer() {
       }
     }
     return statusMap;
-  }, [events]);
+  }, [allStoreEvents]);
 
   const trajectoryGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
     const features: GeoJSON.Feature[] = [];
@@ -447,18 +450,31 @@ export default function MapContainer() {
       });
 
       // Popup on click (circles + icons)
+      const severityLabels: Record<string, string> = {
+        critical: '🔴 CRITICAL', moderate: '🟠 MODERATE', info: '🔵 INFO', cleared: '🟢 CLEARED',
+      };
+      const typeLabels: Record<string, string> = {
+        alert: '⚠️ Alert', strike: '💥 Strike', thermal: '🔥 Thermal', flight: '✈️ Flight',
+        missile: '🚀 Missile', seismic: '〰️ Seismic', news: '📰 News', social: '💬 Social', ship: '🚢 Ship',
+      };
       const handlePopupClick = (e: maplibregl.MapLayerMouseEvent) => {
         const feature = e.features?.[0];
         if (!feature) return;
         const p = feature.properties as Record<string, string>;
         const time = p.timestamp ? timeAgo(p.timestamp) : "";
+        const sevLabel = severityLabels[p.severity] ?? p.severity;
+        const typeLabel = typeLabels[p.type] ?? p.type;
 
-        new maplibregl.Popup({ closeButton: false, className: "event-popup" })
+        new maplibregl.Popup({ closeButton: true, className: "event-popup", maxWidth: "320px" })
           .setLngLat(e.lngLat)
           .setHTML(
-            `<strong>${p.title}</strong>` +
-            (p.locationName ? `<br/>${p.locationName}` : "") +
-            `<br/><small>${p.source}${time ? ` &middot; ${time}` : ""}</small>`,
+            `<div style="font-size:12px;line-height:1.4">` +
+            `<div style="margin-bottom:4px"><strong>${p.title}</strong></div>` +
+            `<div style="margin-bottom:4px;opacity:0.8">${sevLabel} &middot; ${typeLabel}</div>` +
+            (p.locationName ? `<div style="margin-bottom:4px">📍 ${p.locationName}</div>` : "") +
+            `<div style="opacity:0.6">Source: <strong>${p.source}</strong>${time ? ` &middot; ${time}` : ""}</div>` +
+            (p.timestamp ? `<div style="opacity:0.5;font-size:10px;margin-top:2px">${new Date(p.timestamp).toLocaleString()}</div>` : "") +
+            `</div>`,
           )
           .addTo(map);
       };

@@ -312,8 +312,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (newEvents.length === 0) return;
 
         set((state) => {
-          const merged = [...newEvents, ...state.events].slice(0, 200);
-          return { events: merged };
+          const merged = new Map(state.events.map((e) => [e.id, e]));
+          for (const e of newEvents) merged.set(e.id, e);
+          const all = [...merged.values()].sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+          return { events: all.slice(0, 500) };
         });
 
         // Refresh ticker when new events arrive

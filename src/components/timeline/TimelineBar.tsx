@@ -208,7 +208,10 @@ export default function TimelineBar({
           className="rounded p-1 text-muted hover:text-foreground"
           aria-label={isPlaying ? "Pause" : "Play"}
           onClick={() => {
-            if (playbackTime === null) setPlaybackTime(new Date());
+            if (playbackTime === null) {
+              const rangeMs = getRangeMs(selectedRange) ?? 24 * 60 * 60 * 1000;
+              setPlaybackTime(new Date(Date.now() - rangeMs));
+            }
             setIsPlaying(!isPlaying);
           }}
         >
@@ -358,7 +361,8 @@ export default function TimelineBar({
             aria-label={isPlaying ? "Pause" : "Play"}
             onClick={() => {
               if (playbackTime === null) {
-                setPlaybackTime(new Date());
+                const rangeMs = getRangeMs(selectedRange) ?? 24 * 60 * 60 * 1000;
+                setPlaybackTime(new Date(Date.now() - rangeMs));
               }
               setIsPlaying(!isPlaying);
             }}
