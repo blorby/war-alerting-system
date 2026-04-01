@@ -58,6 +58,11 @@ interface AppState {
   isLive: boolean;
   lastUpdate: Date | null;
 
+  activeFront: string;
+  activeType: string;
+  setFront: (front: string) => void;
+  setType: (type: string) => void;
+
   fetchEvents: () => Promise<void>;
   fetchThreat: () => Promise<void>;
   fetchTicker: () => Promise<void>;
@@ -67,12 +72,43 @@ interface AppState {
 
 let sseConnection: EventSource | null = null;
 
+export function selectFilteredEvents(state: AppState): EventData[] {
+  let filtered = state.events;
+
+  if (state.activeFront !== 'all') {
+    filtered = filtered.filter(e => {
+      const s = e.source.toLowerCase();
+      const t = e.title.toLowerCase();
+      const cat = ((e.metadata?.category as string) || '').toLowerCase();
+      switch (state.activeFront) {
+        case 'iran': return s.includes('iran') || cat.includes('iran') || e.country === 'IR' || t.includes('iran');
+        case 'gaza': return s.includes('gaza') || t.includes('gaza');
+        case 'lebanon': return s.includes('lebanon') || t.includes('lebanon') || t.includes('hezbollah');
+        case 'west_bank': return s.includes('wafa') || s.includes('maan') || t.includes('west bank');
+        case 'internal': return e.country === 'IL' && (s.startsWith('oref') || s.startsWith('telegram-hfc'));
+        default: return true;
+      }
+    });
+  }
+
+  if (state.activeType !== 'all') {
+    filtered = filtered.filter(e => e.type === state.activeType);
+  }
+
+  return filtered;
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   events: [],
   threat: null,
   tickerItems: [],
   isLive: false,
   lastUpdate: null,
+
+  activeFront: 'all',
+  activeType: 'all',
+  setFront: (front) => set({ activeFront: front }),
+  setType: (type) => set({ activeType: type }),
 
   fetchEvents: async () => {
     try {

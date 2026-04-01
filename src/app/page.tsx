@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import NewsTicker from "@/components/layout/NewsTicker";
+import FrontFilter from "@/components/filters/FrontFilter";
+import TypeFilter from "@/components/filters/TypeFilter";
 import AlertFeed from "@/components/alerts/AlertFeed";
 import ThreatPanel from "@/components/threats/ThreatPanel";
 import TimelineBar from "@/components/timeline/TimelineBar";
@@ -51,6 +53,8 @@ export default function Dashboard() {
       {/* Main content: sidebar + map */}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar>
+          <FrontFilter />
+          <TypeFilter />
           <AlertFeed />
           <ThreatPanel />
         </Sidebar>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useAppStore } from "@/lib/store";
+import { useAppStore, selectFilteredEvents } from "@/lib/store";
 
 const severityConfig = {
   critical: { label: "CRITICAL", color: "text-critical", bg: "bg-critical/10", dot: "bg-critical" },
@@ -10,7 +10,7 @@ const severityConfig = {
 };
 
 export default function AlertFeed() {
-  const events = useAppStore((s) => s.events);
+  const events = useAppStore(selectFilteredEvents);
   const activeAlerts = events.filter((e) => e.isActive);
   const criticalCount = activeAlerts.filter((e) => e.severity === "critical").length;
 
