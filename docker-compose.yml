@@ -32,14 +32,27 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  worker:
+  worker-oref-current:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    command: ["node", "dist/workers/oref-current.js"]
     environment:
       - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
-    env_file:
-      - .env
+      - OREF_BASE_URL=${OREF_BASE_URL:-https://www.oref.org.il}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker-oref-history:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["node", "dist/workers/oref-history.js"]
+    environment:
+      - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
+      - OREF_BASE_URL=${OREF_BASE_URL:-https://www.oref.org.il}
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,11 +62,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    command: ["node", "dist/ai/cron.js"]
+    command: ["node", "dist/workers/ai-assessment.js"]
     environment:
       - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
-    env_file:
-      - .env
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
