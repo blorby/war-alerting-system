@@ -42,6 +42,11 @@ export default function MapContainer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [viewState, setViewState] = useState({
+    lat: DEFAULT_CENTER[1],
+    lng: DEFAULT_CENTER[0],
+    zoom: DEFAULT_ZOOM,
+  });
 
   const events = useAppStore((s) => s.events);
 
@@ -69,6 +74,15 @@ export default function MapContainer() {
 
     map.on("load", () => {
       setMapReady(true);
+    });
+
+    map.on("moveend", () => {
+      const center = map.getCenter();
+      setViewState({
+        lat: center.lat,
+        lng: center.lng,
+        zoom: Math.round(map.getZoom() * 10) / 10,
+      });
     });
 
     mapRef.current = map;
@@ -202,8 +216,7 @@ export default function MapContainer() {
       {/* Coordinates display */}
       {mapReady && (
         <div className="absolute bottom-2 left-2 text-xs text-muted">
-          {DEFAULT_CENTER[1].toFixed(2)}, {DEFAULT_CENTER[0].toFixed(2)} z
-          {DEFAULT_ZOOM}
+          {viewState.lat.toFixed(2)}, {viewState.lng.toFixed(2)} z{viewState.zoom}
         </div>
       )}
     </div>
