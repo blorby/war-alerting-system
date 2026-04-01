@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { events } from '@/lib/db/schema';
-import { desc, eq, and, count, type SQL } from 'drizzle-orm';
+import { desc, eq, and, gte, count, type SQL } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     const severity = url.searchParams.get('severity');
     const type = url.searchParams.get('type');
     const active = url.searchParams.get('active');
+    const since = url.searchParams.get('since');
 
     const conditions: SQL[] = [];
 
@@ -23,6 +24,12 @@ export async function GET(request: Request) {
     }
     if (active !== null && active !== undefined && active !== '') {
       conditions.push(eq(events.isActive, active === 'true'));
+    }
+    if (since) {
+      const sinceDate = new Date(since);
+      if (!isNaN(sinceDate.getTime())) {
+        conditions.push(gte(events.timestamp, sinceDate));
+      }
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;

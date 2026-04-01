@@ -125,7 +125,7 @@ interface AppState {
   setFront: (front: string) => void;
   setType: (type: string) => void;
 
-  fetchEvents: () => Promise<void>;
+  fetchEvents: (opts?: { since?: string }) => Promise<void>;
   fetchThreat: () => Promise<void>;
   fetchTicker: () => Promise<void>;
   connectSSE: () => void;
@@ -237,12 +237,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   setFront: (front) => set({ activeFront: front }),
   setType: (type) => set({ activeType: type }),
 
-  fetchEvents: async () => {
+  fetchEvents: async (opts) => {
     try {
-      const res = await fetch('/api/events?limit=50&active=true');
+      const params = new URLSearchParams();
+      if (opts?.since) {
+        params.set('since', opts.since);
+        params.set('limit', '200');
+      } else {
+        params.set('limit', '50');
+        params.set('active', 'true');
+      }
+      const res = await fetch(`/api/events?${params}`);
       if (!res.ok) return;
       const data = await res.json();
-      set({ events: data.events ?? [] });
+      if (opts?.since) {
+        // Merge with existing events, deduplicate by id, keep latest 200
+        set((state) => {
+          const merged = new Map(state.events.map((e) => [e.id, e]));
+          for (const e of data.events ?? []) merged.set(e.id, e);
+          const all = [...merged.values()].sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+          return { events: all.slice(0, 200) };
+        });
+      } else {
+        set({ events: data.events ?? [] });
+      }
     } catch {
       // silently ignore fetch errors
     }
@@ -322,7 +342,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   soundEnabled: false,
 
   liveWindow: null,
-  setLiveWindow: (window) => set({ liveWindow: window }),
+  setLiveWindow: (window) => {
+    set({ liveWindow: window });
+    if (window) {
+      const windowMs: Record<string, number> = { '15m': 15*60*1000, '1h': 60*60*1000, '3h': 3*60*60*1000 };
+      const since = new Date(Date.now() - (windowMs[window] ?? 60*60*1000)).toISOString();
+      get().fetchEvents({ since });
+    }
+  },
 
   playbackTime: null,
   playbackSpeed: 1,
