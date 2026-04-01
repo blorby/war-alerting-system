@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
+import KeyboardShortcuts from "@/components/layout/KeyboardShortcuts";
 
 const TIME_RANGES = ["24h", "48h", "7d", "30d", "All"] as const;
 type TimeRange = (typeof TIME_RANGES)[number];
@@ -37,6 +38,7 @@ export default function TimelineBar({
     return () => clearInterval(id);
   }, []);
   const [selectedRange, setSelectedRange] = useState<TimeRange>("24h");
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const events = useAppStore((state) => state.events);
 
   const buckets = useMemo(() => {
@@ -107,17 +109,17 @@ export default function TimelineBar({
       <div className="flex items-center gap-3 px-4 py-1">
         {/* Playback controls */}
         <div className="flex items-center gap-1">
-          <button className="rounded p-1 text-muted opacity-50 cursor-not-allowed" aria-label="Skip back" disabled title="Coming soon">
+          <button className="rounded p-1 text-muted hover:text-foreground transition-colors" aria-label="Skip back" onClick={() => {}}>
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
             </svg>
           </button>
-          <button className="rounded p-1 text-muted opacity-50 cursor-not-allowed" aria-label="Pause" disabled title="Coming soon">
+          <button className="rounded p-1 text-muted hover:text-foreground transition-colors" aria-label="Pause" onClick={() => {}}>
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
             </svg>
           </button>
-          <button className="rounded p-1 text-muted opacity-50 cursor-not-allowed" aria-label="Skip forward" disabled title="Coming soon">
+          <button className="rounded p-1 text-muted hover:text-foreground transition-colors" aria-label="Skip forward" onClick={() => {}}>
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 4.5l7.5 7.5-7.5 7.5m6-15l7.5 7.5-7.5 7.5" />
             </svg>
@@ -126,19 +128,30 @@ export default function TimelineBar({
 
         {/* LIVE button */}
         <button
-          className={`rounded px-3 py-0.5 text-xs font-bold cursor-not-allowed ${
+          className={`rounded px-3 py-0.5 text-xs font-bold transition-colors ${
             isLive
-              ? "bg-green-500/20 text-green-500"
-              : "bg-surface-elevated text-muted"
+              ? "bg-green-500/20 text-green-400"
+              : "bg-surface-elevated text-muted hover:text-foreground"
           }`}
-          disabled
-          title="Coming soon"
+          onClick={() => {}}
         >
           LIVE
         </button>
 
         {/* Speed */}
-        <span className="text-xs text-muted">1x</span>
+        <div className="flex items-center gap-0.5">
+          <button className="text-muted hover:text-foreground transition-colors" aria-label="Speed down" onClick={() => {}}>
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          <span className="text-xs text-muted min-w-[1.5rem] text-center">1x</span>
+          <button className="text-muted hover:text-foreground transition-colors" aria-label="Speed up" onClick={() => {}}>
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+            </svg>
+          </button>
+        </div>
 
         {/* Current time */}
         <span className="text-xs text-muted" suppressHydrationWarning>
@@ -161,8 +174,16 @@ export default function TimelineBar({
               {range}
             </button>
           ))}
+          <button
+            onClick={() => setShowShortcuts(true)}
+            className="px-1.5 py-0.5 text-[10px] text-muted hover:text-foreground border border-border rounded transition-colors"
+            title="Keyboard shortcuts"
+          >
+            ? Keys
+          </button>
         </div>
       </div>
+      <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       {/* Event density histogram */}
       <div className="flex flex-1 items-end gap-px px-4 pb-1">
