@@ -17,7 +17,7 @@ export default function Sidebar({ children }: SidebarProps) {
     >
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-6 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-r bg-surface-elevated text-muted hover:text-foreground"
+        className="absolute -right-8 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-r bg-surface-elevated text-muted hover:text-foreground"
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
         <svg
