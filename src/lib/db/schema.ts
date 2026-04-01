@@ -36,6 +36,7 @@ export const events = pgTable(
     country: text("country"),
     isActive: boolean("is_active").notNull().default(true),
     dedupHash: text("dedup_hash"),
+    corroborated: boolean("corroborated").notNull().default(false),
   },
   (table) => [
     index("events_timestamp_idx").on(table.timestamp),

@@ -46,6 +46,11 @@ export default function AlertFeed() {
                   <span className={`text-xs font-bold ${config.color}`}>
                     {config.label}
                   </span>
+                  {alert.corroborated ? (
+                    <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-green-500/20 text-green-400">CONFIRMED</span>
+                  ) : (
+                    <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-yellow-500/20 text-yellow-400">UNCONFIRMED</span>
+                  )}
                   <span className="text-xs text-muted">
                     {formatTimeAgo(new Date(alert.timestamp))}
                   </span>

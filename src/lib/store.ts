@@ -19,6 +19,7 @@ export interface EventData {
   country: string | null;
   isActive: boolean;
   dedupHash: string | null;
+  corroborated: boolean;
 }
 
 export interface CountryThreatData {
