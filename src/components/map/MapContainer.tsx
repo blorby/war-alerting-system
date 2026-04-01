@@ -68,6 +68,7 @@ const MAP_STYLE =
 const EVENTS_SOURCE = "events-source";
 const EVENTS_CIRCLES_LAYER = "events-circles";
 const EVENTS_GLOW_LAYER = "events-glow";
+const EVENTS_ICONS_LAYER = "events-icons";
 
 const POLYGONS_SOURCE = 'alert-polygons-source';
 const POLYGONS_FILL_LAYER = 'alert-polygons-fill';
@@ -279,8 +280,43 @@ export default function MapContainer() {
         },
       });
 
-      // Popup on click
-      map.on("click", EVENTS_CIRCLES_LAYER, (e) => {
+      // Icon overlay for event types
+      map.addLayer({
+        id: EVENTS_ICONS_LAYER,
+        type: "symbol",
+        source: EVENTS_SOURCE,
+        layout: {
+          "text-field": [
+            "match",
+            ["get", "type"],
+            "strike", "\u{1F4A5}",
+            "alert", "\u26A0",
+            "thermal", "\u{1F525}",
+            "flight", "\u2708",
+            "missile", "\u{1F680}",
+            "seismic", "\u3030",
+            "news", "\u{1F4F0}",
+            "social", "\u{1F4AC}",
+            "ship", "\u{1F6A2}",
+            "",
+          ] as unknown as maplibregl.ExpressionSpecification,
+          "text-size": [
+            "match",
+            ["get", "severity"],
+            "critical", 14,
+            "moderate", 12,
+            10,
+          ] as unknown as maplibregl.ExpressionSpecification,
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+        },
+        paint: {
+          "text-opacity": 0.9,
+        },
+      });
+
+      // Popup on click (circles + icons)
+      const handlePopupClick = (e: maplibregl.MapLayerMouseEvent) => {
         const feature = e.features?.[0];
         if (!feature) return;
         const p = feature.properties as Record<string, string>;
@@ -294,15 +330,17 @@ export default function MapContainer() {
             `<br/><small>${p.source}${time ? ` &middot; ${time}` : ""}</small>`,
           )
           .addTo(map);
-      });
+      };
+      map.on("click", EVENTS_CIRCLES_LAYER, handlePopupClick);
+      map.on("click", EVENTS_ICONS_LAYER, handlePopupClick);
 
       // Cursor changes on hover
-      map.on("mouseenter", EVENTS_CIRCLES_LAYER, () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-      map.on("mouseleave", EVENTS_CIRCLES_LAYER, () => {
-        map.getCanvas().style.cursor = "";
-      });
+      const setCursorPointer = () => { map.getCanvas().style.cursor = "pointer"; };
+      const setCursorDefault = () => { map.getCanvas().style.cursor = ""; };
+      map.on("mouseenter", EVENTS_CIRCLES_LAYER, setCursorPointer);
+      map.on("mouseleave", EVENTS_CIRCLES_LAYER, setCursorDefault);
+      map.on("mouseenter", EVENTS_ICONS_LAYER, setCursorPointer);
+      map.on("mouseleave", EVENTS_ICONS_LAYER, setCursorDefault);
     }
   }, [geoEvents, mapReady]);
 
