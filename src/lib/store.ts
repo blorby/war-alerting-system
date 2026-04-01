@@ -360,7 +360,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   goLive: () => set({ playbackTime: null, isPlaying: false }),
   stepForward: (ms) => set((s) => {
     const current = s.playbackTime ?? new Date();
-    return { playbackTime: new Date(current.getTime() + ms) };
+    const next = new Date(current.getTime() + ms);
+    if (next.getTime() >= Date.now()) {
+      return { playbackTime: null, isPlaying: false };
+    }
+    return { playbackTime: next };
   }),
   stepBackward: (ms) => set((s) => {
     const current = s.playbackTime ?? new Date();

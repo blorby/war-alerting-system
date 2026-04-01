@@ -155,5 +155,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  llm-geocoder:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["node", "dist/workers/llm-geocoder.js"]
+    environment:
+      - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:

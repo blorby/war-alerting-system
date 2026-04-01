@@ -22,7 +22,12 @@ export const RSS_FEEDS: RssFeedConfig[] = [
   { url: 'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml', name: 'BBC Middle East', source: 'bbc-mideast', category: 'international', language: 'en' },
   { url: 'https://www.aljazeera.com/xml/rss/all.xml?region=middle-east', name: 'Al Jazeera Middle East', source: 'aljazeera-mideast', category: 'international', language: 'en' },
   { url: 'https://www.aljazeera.com/xml/rss/all.xml', name: 'Al Jazeera Global', source: 'aljazeera-global', category: 'international', language: 'en' },
-  // Iran / Military
+  // Iran / Military / Defense
   { url: 'https://www.centcom.mil/RSS/', name: 'CENTCOM', source: 'centcom', category: 'iran_military', language: 'en' },
   { url: 'https://www.act.nato.int/article-rss-xml/', name: 'NATO ACT', source: 'nato-act', category: 'iran_military', language: 'en' },
+  { url: 'https://www.dvidshub.net/rss/unit/72/?mkt=en-us', name: 'DVIDS CENTCOM', source: 'dvids-centcom', category: 'iran_military', language: 'en' },
+  { url: 'https://www.israelnationalnews.com/Rss.aspx?act=.1&cat=25', name: 'INN Security', source: 'inn-security', category: 'defense', language: 'en' },
+  // Iran OSINT
+  { url: 'https://en.radiofarda.com/api/z-pqpiev-qpp', name: 'Radio Farda Iran News', source: 'radiofarda', category: 'iran_osint', language: 'en' },
+  { url: 'https://www.iaea.org/feeds/topstories', name: 'IAEA Top Stories', source: 'iaea', category: 'iran_osint', language: 'en' },
 ];
