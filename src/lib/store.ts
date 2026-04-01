@@ -144,6 +144,10 @@ interface AppState {
   announcementDismissed: boolean;
   soundEnabled: boolean;
 
+  // Live window filter
+  liveWindow: '15m' | '1h' | '3h' | null;
+  setLiveWindow: (window: '15m' | '1h' | '3h' | null) => void;
+
   // Playback state
   playbackTime: Date | null;
   playbackSpeed: number;
@@ -316,6 +320,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   announcement: null,
   announcementDismissed: false,
   soundEnabled: false,
+
+  liveWindow: null,
+  setLiveWindow: (window) => set({ liveWindow: window }),
 
   playbackTime: null,
   playbackSpeed: 1,

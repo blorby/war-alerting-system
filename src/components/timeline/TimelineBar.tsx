@@ -7,6 +7,13 @@ import KeyboardShortcuts from "@/components/layout/KeyboardShortcuts";
 const TIME_RANGES = ["24h", "48h", "7d", "30d", "All"] as const;
 type TimeRange = (typeof TIME_RANGES)[number];
 
+const LIVE_WINDOWS = ["15m", "1h", "3h"] as const;
+const LIVE_WINDOW_LABELS: Record<string, string> = {
+  "15m": "15 min",
+  "1h": "1 hour",
+  "3h": "3 hours",
+};
+
 const BUCKET_COUNT = 48;
 const SPEEDS = [1, 2, 5, 10];
 
@@ -24,6 +31,18 @@ function getRangeMs(range: TimeRange): number | null {
       return null;
   }
 }
+
+const trendArrows: Record<string, string> = {
+  escalating: "\u2197",
+  "de-escalating": "\u2198",
+  stable: "\u2192",
+};
+
+const trendColors: Record<string, string> = {
+  escalating: "text-critical",
+  "de-escalating": "text-cleared",
+  stable: "text-muted",
+};
 
 interface TimelineBarProps {
   isLive?: boolean;
@@ -52,6 +71,13 @@ export default function TimelineBar({
   const stepForward = useAppStore((s) => s.stepForward);
   const stepBackward = useAppStore((s) => s.stepBackward);
 
+  const liveWindow = useAppStore((s) => s.liveWindow);
+  const setLiveWindow = useAppStore((s) => s.setLiveWindow);
+
+  const threat = useAppStore((s) => s.threat);
+  const threatHistory = useAppStore((s) => s.threatHistory);
+  const lastUpdate = useAppStore((s) => s.lastUpdate);
+
   // Playback animation: advance time when playing
   useEffect(() => {
     if (!isPlaying || playbackTime === null) return;
@@ -63,36 +89,40 @@ export default function TimelineBar({
 
   const displayTime = playbackTime ?? now;
 
-  const buckets = useMemo(() => {
+  const { buckets, rangeStart, rangeEnd } = useMemo(() => {
     if (events.length === 0) {
-      return Array.from({ length: BUCKET_COUNT }, () => 2);
+      return {
+        buckets: Array.from({ length: BUCKET_COUNT }, () => 2),
+        rangeStart: now.getTime() - 24 * 60 * 60 * 1000,
+        rangeEnd: now.getTime(),
+      };
     }
 
     const rangeMs = getRangeMs(selectedRange);
 
-    let rangeStart: number;
-    let rangeEnd: number;
+    let rStart: number;
+    let rEnd: number;
 
     if (rangeMs !== null) {
-      rangeEnd = now.getTime();
-      rangeStart = rangeEnd - rangeMs;
+      rEnd = now.getTime();
+      rStart = rEnd - rangeMs;
 
       // Check if events are too clustered — auto-zoom if all in one bucket
       const eventTimestamps = events
         .map((e) => new Date(e.timestamp).getTime())
-        .filter((ts) => ts >= rangeStart && ts <= rangeEnd);
+        .filter((ts) => ts >= rStart && ts <= rEnd);
 
       if (eventTimestamps.length > 1) {
         const minTs = Math.min(...eventTimestamps);
         const maxTs = Math.max(...eventTimestamps);
         const span = maxTs - minTs;
-        const bucketWidth = (rangeEnd - rangeStart) / BUCKET_COUNT;
+        const bucketWidth = (rEnd - rStart) / BUCKET_COUNT;
 
         // If all events fit in fewer than 3 buckets, zoom to event span with padding
         if (span < bucketWidth * 3 && span > 0) {
           const padding = span * 0.5 || 60_000; // at least 1 minute padding
-          rangeStart = minTs - padding;
-          rangeEnd = maxTs + padding;
+          rStart = minTs - padding;
+          rEnd = maxTs + padding;
         }
       }
     } else {
@@ -101,18 +131,18 @@ export default function TimelineBar({
       const oldest = Math.min(...timestamps);
       const newest = Math.max(...timestamps);
       // Add a small buffer so the newest event doesn't sit exactly on the edge
-      rangeStart = oldest;
-      rangeEnd = newest === oldest ? newest + 1 : newest;
+      rStart = oldest;
+      rEnd = newest === oldest ? newest + 1 : newest;
     }
 
-    const bucketWidth = (rangeEnd - rangeStart) / BUCKET_COUNT;
+    const bucketWidth = (rEnd - rStart) / BUCKET_COUNT;
     const counts = new Array<number>(BUCKET_COUNT).fill(0);
 
     for (const event of events) {
       const ts = new Date(event.timestamp).getTime();
-      if (ts < rangeStart || ts > rangeEnd) continue;
+      if (ts < rStart || ts > rEnd) continue;
       const idx = Math.min(
-        Math.floor((ts - rangeStart) / bucketWidth),
+        Math.floor((ts - rStart) / bucketWidth),
         BUCKET_COUNT - 1,
       );
       counts[idx]++;
@@ -120,14 +150,48 @@ export default function TimelineBar({
 
     const maxCount = Math.max(...counts);
     if (maxCount === 0) {
-      return Array.from({ length: BUCKET_COUNT }, () => 2);
+      return {
+        buckets: Array.from({ length: BUCKET_COUNT }, () => 2),
+        rangeStart: rStart,
+        rangeEnd: rEnd,
+      };
     }
 
-    return counts.map((c) => Math.max((c / maxCount) * 100, 2));
+    return {
+      buckets: counts.map((c) => Math.max((c / maxCount) * 100, 2)),
+      rangeStart: rStart,
+      rangeEnd: rEnd,
+    };
   }, [events, selectedRange, now]);
 
+  // Playback cursor position on the histogram
+  const cursorPercent = useMemo(() => {
+    if (!playbackTime) return null;
+    const total = rangeEnd - rangeStart;
+    if (total <= 0) return null;
+    const pos = ((playbackTime.getTime() - rangeStart) / total) * 100;
+    return Math.max(0, Math.min(100, pos));
+  }, [playbackTime, rangeStart, rangeEnd]);
+
+  // Threat sparkline SVG path
+  const sparklinePath = useMemo(() => {
+    if (threatHistory.length < 2) return null;
+    const points = threatHistory.slice(-30);
+    const width = 120;
+    const height = 20;
+    return points
+      .map((p, i) => {
+        const x = (i / (points.length - 1)) * width;
+        const y = height - (p.score / 10) * height;
+        return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+      })
+      .join(" ");
+  }, [threatHistory]);
+
+  const overallTrend = threat?.overallTrend ?? "stable";
+
   return (
-    <div className="flex h-20 shrink-0 flex-col border-t border-border bg-surface">
+    <div className="flex shrink-0 flex-col border-t border-border bg-surface">
       <div className="flex items-center gap-3 px-4 py-1">
         {/* Playback controls */}
         <div className="flex items-center gap-1">
@@ -184,10 +248,32 @@ export default function TimelineBar({
               ? "bg-green-500/20 text-green-400"
               : "bg-surface-elevated text-muted hover:text-foreground"
           }`}
-          onClick={goLive}
+          onClick={() => {
+            goLive();
+            setLiveWindow(null);
+          }}
         >
-          LIVE
+          {"\u00AB"} LIVE
         </button>
+
+        {/* Live window filter — only in live mode */}
+        {playbackTime === null && (
+          <div className="flex items-center gap-0.5 border-l border-border pl-2">
+            {LIVE_WINDOWS.map((w) => (
+              <button
+                key={w}
+                onClick={() => setLiveWindow(liveWindow === w ? null : w)}
+                className={`rounded px-2 py-0.5 text-xs transition-colors ${
+                  liveWindow === w
+                    ? "bg-green-500/20 text-green-400 font-medium"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {LIVE_WINDOW_LABELS[w]}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Speed */}
         <div className="flex items-center gap-0.5">
@@ -219,7 +305,8 @@ export default function TimelineBar({
         </div>
 
         {/* Current time */}
-        <span className="text-xs text-muted" suppressHydrationWarning>
+        <span className={`text-xs ${playbackTime ? "text-warning font-medium" : "text-muted"}`} suppressHydrationWarning>
+          {playbackTime ? "\u23F1 " : ""}
           {displayTime.toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
           {displayTime.toLocaleTimeString("en-US", { hour12: false })}
         </span>
@@ -250,16 +337,65 @@ export default function TimelineBar({
       </div>
       <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
-      {/* Event density histogram */}
+      {/* Event density histogram with playback cursor */}
       <div className="flex flex-1 items-end gap-px px-4 pb-1">
-        {buckets.map((h, i) => (
-          <div
-            key={i}
-            className="flex-1 rounded-t bg-critical/30"
-            style={{ height: `${h}%` }}
-          />
-        ))}
+        <div className="relative flex flex-1 items-end gap-px" style={{ minHeight: 24 }}>
+          {buckets.map((h, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t bg-critical/30"
+              style={{ height: `${h}%` }}
+            />
+          ))}
+          {cursorPercent !== null && (
+            <div
+              className="absolute top-0 bottom-0 w-0.5 bg-warning/80 pointer-events-none z-10"
+              style={{ left: `${cursorPercent}%` }}
+            >
+              <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-warning" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Threat Level row */}
+      <div className="flex items-center gap-4 border-t border-border/50 px-4 py-1">
+        <span className="text-[10px] font-bold tracking-wider text-muted uppercase leading-tight">
+          THREAT<br />LEVEL
+        </span>
+
+        {/* Sparkline */}
+        {sparklinePath && (
+          <svg width="120" height="20" className="shrink-0" viewBox="0 0 120 20">
+            <path d={sparklinePath} fill="none" stroke="#3b82f6" strokeWidth="1.5" />
+          </svg>
+        )}
+
+        {threat && (
+          <>
+            <span className={`text-xs font-bold ${trendColors[overallTrend]}`}>
+              {trendArrows[overallTrend]} {overallTrend.toUpperCase()}
+            </span>
+            {lastUpdate && (
+              <span className="text-[10px] text-muted">
+                {formatTimeAgo(lastUpdate)}
+              </span>
+            )}
+          </>
+        )}
+        {!threat && (
+          <span className="text-[10px] text-muted">Awaiting assessment...</span>
+        )}
       </div>
     </div>
   );
+}
+
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return "less than a minute ago";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
 }

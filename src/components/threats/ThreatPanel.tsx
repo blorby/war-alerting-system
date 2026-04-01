@@ -3,7 +3,6 @@
 import { useAppStore } from "@/lib/store";
 import { COUNTRIES } from "@/lib/constants";
 import ThreatHistoryChart from "./ThreatHistoryChart";
-import AIAssessment from "./AIAssessment";
 
 const trendArrows = {
   escalating: "↗",
@@ -89,7 +88,6 @@ export default function ThreatPanel() {
             ))}
           </div>
 
-          <AIAssessment />
         </>
       )}
     </section>

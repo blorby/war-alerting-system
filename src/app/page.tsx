@@ -30,6 +30,7 @@ export default function Dashboard() {
   const fetchEvents = useAppStore((s) => s.fetchEvents);
   const fetchThreat = useAppStore((s) => s.fetchThreat);
   const fetchTicker = useAppStore((s) => s.fetchTicker);
+  const fetchThreatHistory = useAppStore((s) => s.fetchThreatHistory);
   const connectSSE = useAppStore((s) => s.connectSSE);
   const disconnectSSE = useAppStore((s) => s.disconnectSSE);
 
@@ -37,15 +38,19 @@ export default function Dashboard() {
     fetchEvents();
     fetchThreat();
     fetchTicker();
+    fetchThreatHistory('24h');
     connectSSE();
 
-    const threatInterval = setInterval(fetchThreat, 60_000);
+    const threatInterval = setInterval(() => {
+      fetchThreat();
+      fetchThreatHistory('24h');
+    }, 60_000);
 
     return () => {
       clearInterval(threatInterval);
       disconnectSSE();
     };
-  }, [fetchEvents, fetchThreat, fetchTicker, connectSSE, disconnectSSE]);
+  }, [fetchEvents, fetchThreat, fetchTicker, fetchThreatHistory, connectSSE, disconnectSSE]);
 
   return (
     <div className="flex h-full flex-col">
