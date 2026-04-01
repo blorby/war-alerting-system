@@ -6,6 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/geo/regions";
 import { useAppStore } from "@/lib/store";
 import { EVENT_TYPES } from "@/lib/constants";
+import districtsData from '@/lib/geo/districts.json';
 import MapFocus from "./MapFocus";
 import MapLayers from "./MapLayers";
 import MapLegend from "./MapLegend";
@@ -31,6 +32,10 @@ const MAP_STYLE =
 const EVENTS_SOURCE = "events-source";
 const EVENTS_CIRCLES_LAYER = "events-circles";
 const EVENTS_GLOW_LAYER = "events-glow";
+
+const POLYGONS_SOURCE = 'alert-polygons-source';
+const POLYGONS_FILL_LAYER = 'alert-polygons-fill';
+const POLYGONS_LINE_LAYER = 'alert-polygons-line';
 
 /** Build a MapLibre match expression that maps event type strings to colors. */
 function buildTypeColorMatch(): maplibregl.ExpressionSpecification {
@@ -68,6 +73,30 @@ export default function MapContainer() {
     () => events.filter((e) => e.lat != null && e.lng != null),
     [events],
   );
+
+  const areaAlertStatus = useMemo(() => {
+    const districts = districtsData as Record<string, { areaid: number }>;
+    const statusMap = new Map<number, string>();
+    const severityRank: Record<string, number> = { critical: 3, moderate: 2, info: 1, cleared: 0 };
+
+    for (const e of events) {
+      if (e.type === 'alert' && e.locationName) {
+        const district = districts[e.locationName];
+        if (!district?.areaid) continue;
+
+        const current = statusMap.get(district.areaid);
+        const currentRank = current ? (severityRank[current] ?? 0) : -1;
+        const newRank = severityRank[e.severity] ?? 0;
+
+        if (e.isActive && newRank > currentRank) {
+          statusMap.set(district.areaid, e.severity);
+        } else if (!e.isActive && !statusMap.has(district.areaid)) {
+          statusMap.set(district.areaid, 'cleared');
+        }
+      }
+    }
+    return statusMap;
+  }, [events]);
 
   // --- Map initialization ---
   useEffect(() => {
@@ -215,6 +244,98 @@ export default function MapContainer() {
       });
     }
   }, [geoEvents, mapReady]);
+
+  // --- Alert zone polygons ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const loadPolygons = async () => {
+      let polygonData: GeoJSON.FeatureCollection;
+      try {
+        const res = await fetch('/district-polygons.geojson');
+        if (!res.ok) return;
+        polygonData = await res.json();
+      } catch {
+        return;
+      }
+
+      // Tag each feature with current alert severity
+      for (const feature of polygonData.features) {
+        const areaid = (feature.properties as Record<string, unknown>)?.areaid as number;
+        const severity = areaAlertStatus.get(areaid) ?? null;
+        (feature.properties as Record<string, unknown>).severity = severity;
+      }
+
+      const source = map.getSource(POLYGONS_SOURCE) as maplibregl.GeoJSONSource | undefined;
+      if (source) {
+        source.setData(polygonData);
+      } else {
+        map.addSource(POLYGONS_SOURCE, { type: 'geojson', data: polygonData });
+
+        // Insert polygon layers BELOW the glow layer so event markers stay on top
+        const beforeLayer = map.getLayer(EVENTS_GLOW_LAYER) ? EVENTS_GLOW_LAYER : undefined;
+
+        map.addLayer(
+          {
+            id: POLYGONS_FILL_LAYER,
+            type: 'fill',
+            source: POLYGONS_SOURCE,
+            paint: {
+              'fill-color': [
+                'match',
+                ['get', 'severity'],
+                'critical', '#ef4444',
+                'moderate', '#f97316',
+                'info', '#3b82f6',
+                'cleared', '#22c55e',
+                'transparent',
+              ] as unknown as maplibregl.ExpressionSpecification,
+              'fill-opacity': [
+                'match',
+                ['get', 'severity'],
+                'critical', 0.3,
+                'moderate', 0.25,
+                'info', 0.15,
+                'cleared', 0.1,
+                0,
+              ] as unknown as maplibregl.ExpressionSpecification,
+            },
+          },
+          beforeLayer,
+        );
+
+        map.addLayer(
+          {
+            id: POLYGONS_LINE_LAYER,
+            type: 'line',
+            source: POLYGONS_SOURCE,
+            paint: {
+              'line-color': [
+                'match',
+                ['get', 'severity'],
+                'critical', '#ef4444',
+                'moderate', '#f97316',
+                'info', '#3b82f6',
+                'cleared', '#22c55e',
+                'transparent',
+              ] as unknown as maplibregl.ExpressionSpecification,
+              'line-width': [
+                'case',
+                ['!=', ['get', 'severity'], null],
+                1.5,
+                0,
+              ] as unknown as maplibregl.ExpressionSpecification,
+              'line-opacity': 0.6,
+            },
+          },
+          beforeLayer,
+        );
+      }
+    };
+
+    loadPolygons();
+  }, [areaAlertStatus, mapReady]);
 
   const handleFocusChange = useCallback(
     (bounds: [[number, number], [number, number]]) => {
