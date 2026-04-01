@@ -16,13 +16,13 @@ export default function MissileCountsPanel() {
   const chartData = missileCounts
     ? missileCounts.dates.map((date, i) => ({
         date,
-        alerts: missileCounts.alerts[i],
-        strikes: missileCounts.strikes[i],
+        missiles: missileCounts.missiles[i],
+        uavs: missileCounts.uavs[i],
       }))
     : [];
 
   return (
-    <PanelContainer title="Missile Counts" icon={icon}>
+    <PanelContainer title="Attack Waves" icon={icon}>
       {!missileCounts ? (
         <p className="text-muted text-center py-4">No missile data</p>
       ) : (
@@ -50,20 +50,18 @@ export default function MissileCountsPanel() {
                     color: '#e5e5e5',
                   }}
                 />
-                <Legend
-                  wrapperStyle={{ fontSize: '10px' }}
-                />
-                <Bar dataKey="alerts" fill="#f97316" name="Alerts" />
-                <Bar dataKey="strikes" fill="#ef4444" name="Strikes" />
+                <Legend wrapperStyle={{ fontSize: '10px' }} />
+                <Bar dataKey="missiles" fill="#ef4444" name="Missiles" />
+                <Bar dataKey="uavs" fill="#f97316" name="UAVs" />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="flex items-center justify-between text-muted mt-1">
             <span>
-              Total: <span className="text-orange-400 font-medium">{missileCounts.totalAlerts}</span> alerts,{' '}
-              <span className="text-red-400 font-medium">{missileCounts.totalStrikes}</span> strikes
+              <span className="text-red-400 font-medium">{missileCounts.totalMissiles}</span> missile waves,{' '}
+              <span className="text-orange-400 font-medium">{missileCounts.totalUavs}</span> UAV waves
             </span>
-            <span className="text-[10px]">Since {missileCounts.since}</span>
+            <span className="text-[10px]">Since {new Date(missileCounts.since).toLocaleDateString()}</span>
           </div>
         </div>
       )}

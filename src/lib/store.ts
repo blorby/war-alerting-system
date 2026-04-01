@@ -93,10 +93,10 @@ export interface DigestData {
 
 export interface MissileCountData {
   dates: string[];
-  alerts: number[];
-  strikes: number[];
-  totalAlerts: number;
-  totalStrikes: number;
+  missiles: number[];
+  uavs: number[];
+  totalMissiles: number;
+  totalUavs: number;
   since: string;
 }
 
