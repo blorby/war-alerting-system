@@ -75,6 +75,48 @@ const POLYGONS_SOURCE = 'alert-polygons-source';
 const POLYGONS_FILL_LAYER = 'alert-polygons-fill';
 const POLYGONS_LINE_LAYER = 'alert-polygons-line';
 
+const TRAJECTORIES_SOURCE = 'trajectories-source';
+const TRAJECTORIES_LAYER = 'trajectories-line';
+
+const LAUNCH_ORIGINS: Record<string, [number, number]> = {
+  iran: [53.0, 32.5],
+  lebanon: [35.8, 33.9],
+  gaza: [34.47, 31.5],
+  yemen: [44.21, 15.35],
+  iraq: [44.37, 33.31],
+  syria: [36.28, 33.51],
+};
+
+function guessOrigin(event: { title: string; lat: number; lng: number }): [number, number] | null {
+  const t = event.title.toLowerCase();
+  if (t.includes('iran')) return LAUNCH_ORIGINS.iran;
+  if (t.includes('hezbollah') || t.includes('lebanon')) return LAUNCH_ORIGINS.lebanon;
+  if (t.includes('houthi') || t.includes('yemen')) return LAUNCH_ORIGINS.yemen;
+  if (t.includes('gaza') || t.includes('hamas')) return LAUNCH_ORIGINS.gaza;
+  if (t.includes('iraq')) return LAUNCH_ORIGINS.iraq;
+  if (t.includes('syria')) return LAUNCH_ORIGINS.syria;
+  // If target is in Israel, default origin is Iran
+  if (event.lat >= 29 && event.lat <= 34 && event.lng >= 34 && event.lng <= 36.5) {
+    return LAUNCH_ORIGINS.iran;
+  }
+  return null;
+}
+
+function generateArc(start: [number, number], end: [number, number], numPoints = 50): [number, number][] {
+  const points: [number, number][] = [];
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    const lng = start[0] + (end[0] - start[0]) * t;
+    const lat = start[1] + (end[1] - start[1]) * t;
+    // Add curvature — peak at midpoint, proportional to distance
+    const dist = Math.sqrt(Math.pow(end[0] - start[0], 2) + Math.pow(end[1] - start[1], 2));
+    const arcHeight = dist * 0.15;
+    const curve = Math.sin(t * Math.PI) * arcHeight;
+    points.push([lng, lat + curve]);
+  }
+  return points;
+}
+
 /** Build a MapLibre match expression that maps event type strings to colors. */
 function buildTypeColorMatch(): maplibregl.ExpressionSpecification {
   const stops: (string | maplibregl.ExpressionSpecification)[] = [];
@@ -135,6 +177,23 @@ export default function MapContainer() {
     }
     return statusMap;
   }, [events]);
+
+  const trajectoryGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
+    const features: GeoJSON.Feature[] = [];
+    for (const e of geoEvents) {
+      if (e.type !== 'strike' && e.type !== 'missile') continue;
+      const origin = guessOrigin({ title: e.title, lat: e.lat!, lng: e.lng! });
+      if (!origin) continue;
+      const target: [number, number] = [e.lng!, e.lat!];
+      const arc = generateArc(origin, target);
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: arc },
+        properties: { severity: e.severity },
+      });
+    }
+    return { type: 'FeatureCollection', features };
+  }, [geoEvents]);
 
   // --- Map initialization ---
   useEffect(() => {
@@ -474,6 +533,44 @@ export default function MapContainer() {
 
     loadPolygons();
   }, [areaAlertStatus, mapReady]);
+
+  // --- Missile/strike trajectory arcs ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const source = map.getSource(TRAJECTORIES_SOURCE) as maplibregl.GeoJSONSource | undefined;
+
+    if (source) {
+      source.setData(trajectoryGeojson);
+    } else {
+      map.addSource(TRAJECTORIES_SOURCE, { type: 'geojson', data: trajectoryGeojson });
+
+      // Insert above polygon layers but below event glow/circles
+      const beforeLayer = map.getLayer(EVENTS_GLOW_LAYER) ? EVENTS_GLOW_LAYER : undefined;
+
+      map.addLayer(
+        {
+          id: TRAJECTORIES_LAYER,
+          type: 'line',
+          source: TRAJECTORIES_SOURCE,
+          paint: {
+            'line-color': [
+              'match',
+              ['get', 'severity'],
+              'critical', '#ef4444',
+              'moderate', '#f97316',
+              '#ef4444',
+            ] as unknown as maplibregl.ExpressionSpecification,
+            'line-width': 1.8,
+            'line-opacity': 0.6,
+            'line-dasharray': [2, 2],
+          },
+        },
+        beforeLayer,
+      );
+    }
+  }, [trajectoryGeojson, mapReady]);
 
   const handleFocusChange = useCallback(
     (bounds: [[number, number], [number, number]]) => {
