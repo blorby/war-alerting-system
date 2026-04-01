@@ -29,5 +29,5 @@ export const RSS_FEEDS: RssFeedConfig[] = [
   { url: 'https://www.israelnationalnews.com/Rss.aspx?act=.1&cat=25', name: 'INN Security', source: 'inn-security', category: 'defense', language: 'en' },
   // Iran OSINT
   { url: 'https://en.radiofarda.com/api/z-pqpiev-qpp', name: 'Radio Farda Iran News', source: 'radiofarda', category: 'iran_osint', language: 'en' },
-  { url: 'https://www.iaea.org/feeds/topstories', name: 'IAEA Top Stories', source: 'iaea', category: 'iran_osint', language: 'en' },
+  { url: 'https://www.iaea.org/feeds/iaea-newscenter-news', name: 'IAEA News', source: 'iaea', category: 'iran_osint', language: 'en' },
 ];
