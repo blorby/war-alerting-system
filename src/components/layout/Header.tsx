@@ -71,7 +71,11 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2">
-        <button className="rounded px-2 py-1 text-xs text-muted hover:bg-surface-elevated hover:text-foreground">
+        <button
+          disabled
+          title="Coming soon"
+          className="cursor-not-allowed rounded px-2 py-1 text-xs text-muted opacity-50"
+        >
           EN
         </button>
       </div>
