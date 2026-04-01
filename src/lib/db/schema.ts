@@ -93,6 +93,15 @@ export const countryThreats = pgTable(
   ]
 );
 
+export const announcements = pgTable("announcements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  text: text("text").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const telegramChannels = pgTable("telegram_channels", {
   id: serial("id").primaryKey(),
   channelName: text("channel_name").notNull().unique(),
