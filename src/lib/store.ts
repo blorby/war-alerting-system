@@ -50,6 +50,67 @@ export interface TickerItemData {
   timestamp: string;
 }
 
+export interface NewsItem {
+  id: string;
+  title: string;
+  url: string | null;
+  source: string;
+  category: string;
+  timestamp: string;
+}
+
+export interface SocialPost {
+  id: string;
+  channel: string;
+  channelUrl: string;
+  text: string;
+  messageUrl: string | null;
+  credibility: number;
+  verified: boolean;
+  platform: string;
+  timestamp: string;
+}
+
+export interface FlightPosition {
+  id: string;
+  callsign: string;
+  type: string;
+  altitude: number;
+  speed: number;
+  heading: number;
+  status: string;
+  isMilitary: boolean;
+  lat: number;
+  lng: number;
+  timestamp: string;
+}
+
+export interface DigestData {
+  summary: string;
+  bullets: string[];
+  generatedAt: string;
+}
+
+export interface MissileCountData {
+  dates: string[];
+  alerts: number[];
+  strikes: number[];
+  totalAlerts: number;
+  totalStrikes: number;
+  since: string;
+}
+
+export interface ThreatHistoryPoint {
+  timestamp: string;
+  score: number;
+}
+
+export interface AnnouncementData {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
 // --- Store state & actions ---
 
 interface AppState {
@@ -69,6 +130,30 @@ interface AppState {
   fetchTicker: () => Promise<void>;
   connectSSE: () => void;
   disconnectSSE: () => void;
+
+  // Panel data
+  news: NewsItem[];
+  socialPosts: SocialPost[];
+  flights: FlightPosition[];
+  digest: DigestData | null;
+  missileCounts: MissileCountData | null;
+  threatHistory: ThreatHistoryPoint[];
+  announcement: AnnouncementData | null;
+
+  // UI state
+  announcementDismissed: boolean;
+  soundEnabled: boolean;
+
+  // Panel data fetchers
+  fetchNews: () => Promise<void>;
+  fetchSocial: () => Promise<void>;
+  fetchFlights: () => Promise<void>;
+  fetchDigest: () => Promise<void>;
+  fetchMissileCounts: () => Promise<void>;
+  fetchThreatHistory: (range: string) => Promise<void>;
+  fetchAnnouncement: () => Promise<void>;
+  dismissAnnouncement: () => void;
+  toggleSound: () => void;
 }
 
 let sseConnection: EventSource | null = null;
@@ -202,4 +287,81 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     set({ isLive: false });
   },
+
+  news: [],
+  socialPosts: [],
+  flights: [],
+  digest: null,
+  missileCounts: null,
+  threatHistory: [],
+  announcement: null,
+  announcementDismissed: false,
+  soundEnabled: false,
+
+  fetchNews: async () => {
+    try {
+      const res = await fetch('/api/news');
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ news: data.items ?? [] });
+    } catch { /* ignore */ }
+  },
+
+  fetchSocial: async () => {
+    try {
+      const res = await fetch('/api/social');
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ socialPosts: data.items ?? [] });
+    } catch { /* ignore */ }
+  },
+
+  fetchFlights: async () => {
+    try {
+      const res = await fetch('/api/flights');
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ flights: data.items ?? [] });
+    } catch { /* ignore */ }
+  },
+
+  fetchDigest: async () => {
+    try {
+      const res = await fetch('/api/digest');
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ digest: data.digest ?? null });
+    } catch { /* ignore */ }
+  },
+
+  fetchMissileCounts: async () => {
+    try {
+      const res = await fetch('/api/missile-counts');
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ missileCounts: data ?? null });
+    } catch { /* ignore */ }
+  },
+
+  fetchThreatHistory: async (range: string) => {
+    try {
+      const res = await fetch(`/api/threat/history?range=${range}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ threatHistory: data.history ?? [] });
+    } catch { /* ignore */ }
+  },
+
+  fetchAnnouncement: async () => {
+    try {
+      const res = await fetch('/api/announcements');
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ announcement: data.announcement ?? null });
+    } catch { /* ignore */ }
+  },
+
+  dismissAnnouncement: () => set({ announcementDismissed: true }),
+
+  toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
 }));
