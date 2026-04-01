@@ -1,18 +1,7 @@
 "use client";
 
-interface CountryThreat {
-  countryCode: string;
-  countryName: string;
-  flag: string;
-  score: number;
-  trend: "escalating" | "de-escalating" | "stable";
-}
-
-interface ThreatPanelProps {
-  overallScore?: number;
-  overallTrend?: "escalating" | "de-escalating" | "stable";
-  countries?: CountryThreat[];
-}
+import { useAppStore } from "@/lib/store";
+import { COUNTRIES } from "@/lib/constants";
 
 const trendArrows = {
   escalating: "↗",
@@ -34,11 +23,16 @@ function scoreColor(score: number): string {
   return "bg-muted";
 }
 
-export default function ThreatPanel({
-  overallScore,
-  overallTrend = "stable",
-  countries = [],
-}: ThreatPanelProps) {
+export default function ThreatPanel() {
+  const threat = useAppStore((s) => s.threat);
+
+  const overallScore = threat?.overallScore;
+  const overallTrend = threat?.overallTrend ?? "stable";
+  const countries = (threat?.countries ?? []).map((c) => ({
+    ...c,
+    flag: COUNTRIES.find((cc) => cc.code === c.countryCode)?.flag ?? "",
+  }));
+
   return (
     <section className="flex flex-col border-t border-border">
       <div className="flex items-center justify-between border-b border-border px-3 py-2">

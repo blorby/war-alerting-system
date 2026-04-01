@@ -1,15 +1,6 @@
 "use client";
 
-interface TickerItem {
-  id: string;
-  text: string;
-  type: "news" | "alert" | "thermal" | "social";
-  timestamp: Date;
-}
-
-interface NewsTickerProps {
-  items?: TickerItem[];
-}
+import { useAppStore } from "@/lib/store";
 
 const typeColors: Record<string, string> = {
   news: "bg-info",
@@ -18,7 +9,9 @@ const typeColors: Record<string, string> = {
   social: "bg-purple-500",
 };
 
-export default function NewsTicker({ items = [] }: NewsTickerProps) {
+export default function NewsTicker() {
+  const items = useAppStore((s) => s.tickerItems);
+
   if (items.length === 0) {
     return (
       <div className="flex h-7 shrink-0 items-center border-t border-border bg-surface px-4">
@@ -39,7 +32,7 @@ export default function NewsTicker({ items = [] }: NewsTickerProps) {
             />
             <span className="text-foreground">{item.text}</span>
             <span className="text-muted">
-              {formatTimeAgo(item.timestamp)}
+              {formatTimeAgo(new Date(item.timestamp))}
             </span>
           </span>
         ))}

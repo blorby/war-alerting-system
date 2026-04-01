@@ -1,10 +1,10 @@
 "use client";
 
+import { useAppStore } from "@/lib/store";
+
 interface HeaderProps {
-  threatScore?: number;
-  threatLevel?: string;
   isLive?: boolean;
-  lastUpdate?: Date;
+  lastUpdate?: Date | null;
 }
 
 function getThreatColor(score: number): string {
@@ -23,11 +23,11 @@ function getThreatLabel(score: number): string {
 }
 
 export default function Header({
-  threatScore,
   isLive = true,
   lastUpdate,
 }: HeaderProps) {
-  const score = threatScore ?? 0;
+  const threat = useAppStore((s) => s.threat);
+  const score = threat?.overallScore ?? 0;
   const label = getThreatLabel(score);
   const color = getThreatColor(score);
 
@@ -50,7 +50,7 @@ export default function Header({
           </div>
         )}
 
-        {threatScore !== undefined && (
+        {threat !== null && (
           <div className="flex items-center gap-2">
             <span className={`text-xs font-bold ${color}`}>
               THREAT: {label}

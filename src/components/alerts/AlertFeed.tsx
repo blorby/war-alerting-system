@@ -1,18 +1,6 @@
 "use client";
 
-interface Alert {
-  id: string;
-  severity: "critical" | "moderate" | "info" | "cleared";
-  title: string;
-  locationName: string | null;
-  source: string;
-  timestamp: Date;
-}
-
-interface AlertFeedProps {
-  alerts?: Alert[];
-  count?: number;
-}
+import { useAppStore } from "@/lib/store";
 
 const severityConfig = {
   critical: { label: "CRITICAL", color: "text-critical", bg: "bg-critical/10", dot: "bg-critical" },
@@ -21,7 +9,11 @@ const severityConfig = {
   cleared: { label: "CLEARED", color: "text-cleared", bg: "bg-cleared/10", dot: "bg-cleared" },
 };
 
-export default function AlertFeed({ alerts = [], count = 0 }: AlertFeedProps) {
+export default function AlertFeed() {
+  const events = useAppStore((s) => s.events);
+  const activeAlerts = events.filter((e) => e.isActive);
+  const criticalCount = activeAlerts.filter((e) => e.severity === "critical").length;
+
   return (
     <section className="flex flex-col">
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
@@ -29,20 +21,20 @@ export default function AlertFeed({ alerts = [], count = 0 }: AlertFeedProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
         </svg>
         <span className="text-xs font-bold tracking-wide">ALERT FEED</span>
-        {count > 0 && (
+        {criticalCount > 0 && (
           <span className="rounded-full bg-critical/20 px-2 py-0.5 text-xs font-bold text-critical">
-            {count}
+            {criticalCount}
           </span>
         )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {alerts.length === 0 ? (
+        {activeAlerts.length === 0 ? (
           <div className="px-3 py-4 text-center text-xs text-muted">
             No active alerts
           </div>
         ) : (
-          alerts.map((alert) => {
+          activeAlerts.map((alert) => {
             const config = severityConfig[alert.severity];
             return (
               <div
@@ -55,7 +47,7 @@ export default function AlertFeed({ alerts = [], count = 0 }: AlertFeedProps) {
                     {config.label}
                   </span>
                   <span className="text-xs text-muted">
-                    {formatTimeAgo(alert.timestamp)}
+                    {formatTimeAgo(new Date(alert.timestamp))}
                   </span>
                 </div>
                 <p className="mt-1 text-sm font-medium">{alert.title}</p>
