@@ -1,6 +1,27 @@
 "use client";
 
+import { useState, useMemo } from "react";
+import { useAppStore } from "@/lib/store";
+
 const TIME_RANGES = ["24h", "48h", "7d", "30d", "All"] as const;
+type TimeRange = (typeof TIME_RANGES)[number];
+
+const BUCKET_COUNT = 48;
+
+function getRangeMs(range: TimeRange): number | null {
+  switch (range) {
+    case "24h":
+      return 24 * 60 * 60 * 1000;
+    case "48h":
+      return 48 * 60 * 60 * 1000;
+    case "7d":
+      return 7 * 24 * 60 * 60 * 1000;
+    case "30d":
+      return 30 * 24 * 60 * 60 * 1000;
+    case "All":
+      return null;
+  }
+}
 
 interface TimelineBarProps {
   isLive?: boolean;
@@ -12,6 +33,52 @@ export default function TimelineBar({
   currentTime,
 }: TimelineBarProps) {
   const now = currentTime ?? new Date();
+  const [selectedRange, setSelectedRange] = useState<TimeRange>("24h");
+  const events = useAppStore((state) => state.events);
+
+  const buckets = useMemo(() => {
+    if (events.length === 0) {
+      return Array.from({ length: BUCKET_COUNT }, () => 2);
+    }
+
+    const rangeMs = getRangeMs(selectedRange);
+
+    let rangeStart: number;
+    let rangeEnd: number;
+
+    if (rangeMs !== null) {
+      rangeEnd = now.getTime();
+      rangeStart = rangeEnd - rangeMs;
+    } else {
+      // "All" range: span from oldest to newest event
+      const timestamps = events.map((e) => new Date(e.timestamp).getTime());
+      const oldest = Math.min(...timestamps);
+      const newest = Math.max(...timestamps);
+      // Add a small buffer so the newest event doesn't sit exactly on the edge
+      rangeStart = oldest;
+      rangeEnd = newest === oldest ? newest + 1 : newest;
+    }
+
+    const bucketWidth = (rangeEnd - rangeStart) / BUCKET_COUNT;
+    const counts = new Array<number>(BUCKET_COUNT).fill(0);
+
+    for (const event of events) {
+      const ts = new Date(event.timestamp).getTime();
+      if (ts < rangeStart || ts > rangeEnd) continue;
+      const idx = Math.min(
+        Math.floor((ts - rangeStart) / bucketWidth),
+        BUCKET_COUNT - 1,
+      );
+      counts[idx]++;
+    }
+
+    const maxCount = Math.max(...counts);
+    if (maxCount === 0) {
+      return Array.from({ length: BUCKET_COUNT }, () => 2);
+    }
+
+    return counts.map((c) => Math.max((c / maxCount) * 100, 2));
+  }, [events, selectedRange, now]);
 
   return (
     <div className="flex h-20 shrink-0 flex-col border-t border-border bg-surface">
@@ -60,8 +127,9 @@ export default function TimelineBar({
           {TIME_RANGES.map((range) => (
             <button
               key={range}
+              onClick={() => setSelectedRange(range)}
               className={`rounded px-2 py-0.5 text-xs ${
-                range === "24h"
+                range === selectedRange
                   ? "bg-info/20 text-info"
                   : "text-muted hover:text-foreground"
               }`}
@@ -72,18 +140,15 @@ export default function TimelineBar({
         </div>
       </div>
 
-      {/* Event density histogram placeholder */}
+      {/* Event density histogram */}
       <div className="flex flex-1 items-end gap-px px-4 pb-1">
-        {Array.from({ length: 48 }, (_, i) => {
-          const h = Math.random() * 100;
-          return (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-critical/30"
-              style={{ height: `${Math.max(h, 2)}%` }}
-            />
-          );
-        })}
+        {buckets.map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-t bg-critical/30"
+            style={{ height: `${h}%` }}
+          />
+        ))}
       </div>
     </div>
   );
