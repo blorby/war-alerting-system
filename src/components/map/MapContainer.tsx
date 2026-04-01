@@ -69,6 +69,7 @@ const EVENTS_SOURCE = "events-source";
 const EVENTS_CIRCLES_LAYER = "events-circles";
 const EVENTS_GLOW_LAYER = "events-glow";
 const EVENTS_ICONS_LAYER = "events-icons";
+const HEATMAP_LAYER = "events-heatmap";
 
 const POLYGONS_SOURCE = 'alert-polygons-source';
 const POLYGONS_FILL_LAYER = 'alert-polygons-fill';
@@ -236,6 +237,44 @@ export default function MapContainer() {
       source.setData(geojson);
     } else {
       map.addSource(EVENTS_SOURCE, { type: "geojson", data: geojson });
+
+      // Heatmap density layer (bottommost visual layer)
+      map.addLayer({
+        id: HEATMAP_LAYER,
+        type: "heatmap",
+        source: EVENTS_SOURCE,
+        paint: {
+          "heatmap-weight": [
+            "match",
+            ["get", "severity"],
+            "critical", 1,
+            "moderate", 0.6,
+            "info", 0.3,
+            "cleared", 0.1,
+            0.3,
+          ] as unknown as maplibregl.ExpressionSpecification,
+          "heatmap-intensity": [
+            "interpolate", ["linear"], ["zoom"],
+            3, 0.5,
+            9, 2,
+          ] as unknown as maplibregl.ExpressionSpecification,
+          "heatmap-radius": [
+            "interpolate", ["linear"], ["zoom"],
+            3, 15,
+            9, 30,
+          ] as unknown as maplibregl.ExpressionSpecification,
+          "heatmap-opacity": 0.4,
+          "heatmap-color": [
+            "interpolate", ["linear"], ["heatmap-density"],
+            0, "transparent",
+            0.2, "#3b82f6",
+            0.4, "#22c55e",
+            0.6, "#f97316",
+            0.8, "#ef4444",
+            1, "#ffffff",
+          ] as unknown as maplibregl.ExpressionSpecification,
+        },
+      });
 
       // Glow layer for critical events (rendered below the main circles)
       map.addLayer({
