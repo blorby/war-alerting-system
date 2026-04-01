@@ -52,6 +52,25 @@ export default function TimelineBar({
     if (rangeMs !== null) {
       rangeEnd = now.getTime();
       rangeStart = rangeEnd - rangeMs;
+
+      // Check if events are too clustered — auto-zoom if all in one bucket
+      const eventTimestamps = events
+        .map((e) => new Date(e.timestamp).getTime())
+        .filter((ts) => ts >= rangeStart && ts <= rangeEnd);
+
+      if (eventTimestamps.length > 1) {
+        const minTs = Math.min(...eventTimestamps);
+        const maxTs = Math.max(...eventTimestamps);
+        const span = maxTs - minTs;
+        const bucketWidth = (rangeEnd - rangeStart) / BUCKET_COUNT;
+
+        // If all events fit in fewer than 3 buckets, zoom to event span with padding
+        if (span < bucketWidth * 3 && span > 0) {
+          const padding = span * 0.5 || 60_000; // at least 1 minute padding
+          rangeStart = minTs - padding;
+          rangeEnd = maxTs + padding;
+        }
+      }
     } else {
       // "All" range: span from oldest to newest event
       const timestamps = events.map((e) => new Date(e.timestamp).getTime());
@@ -122,7 +141,7 @@ export default function TimelineBar({
         <span className="text-xs text-muted">1x</span>
 
         {/* Current time */}
-        <span className="text-xs text-muted">
+        <span className="text-xs text-muted" suppressHydrationWarning>
           {now.toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
           {now.toLocaleTimeString("en-US", { hour12: false })}
         </span>
