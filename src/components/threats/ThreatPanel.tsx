@@ -2,6 +2,8 @@
 
 import { useAppStore } from "@/lib/store";
 import { COUNTRIES } from "@/lib/constants";
+import ThreatHistoryChart from "./ThreatHistoryChart";
+import AIAssessment from "./AIAssessment";
 
 const trendArrows = {
   escalating: "↗",
@@ -62,6 +64,8 @@ export default function ThreatPanel() {
             </div>
           )}
 
+          <ThreatHistoryChart />
+
           <div className="space-y-0.5 px-3 pb-2">
             {countries.map((c) => (
               <div key={c.countryCode} className="flex items-center gap-2 py-0.5">
@@ -84,6 +88,8 @@ export default function ThreatPanel() {
               </div>
             ))}
           </div>
+
+          <AIAssessment />
         </>
       )}
     </section>

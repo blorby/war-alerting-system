@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import Header from "@/components/layout/Header";
+import AnnouncementBanner from "@/components/layout/AnnouncementBanner";
 import Sidebar from "@/components/layout/Sidebar";
 import NewsTicker from "@/components/layout/NewsTicker";
 import FrontFilter from "@/components/filters/FrontFilter";
@@ -49,6 +50,7 @@ export default function Dashboard() {
     <div className="flex h-full flex-col">
       {/* Header */}
       <Header isLive={isLive} lastUpdate={lastUpdate} />
+      <AnnouncementBanner />
 
       {/* Main content: sidebar + map */}
       <div className="flex flex-1 overflow-hidden">
