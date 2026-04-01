@@ -131,6 +131,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  worker-ship-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["node", "dist/workers/ship-tracker.js"]
+    environment:
+      - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   worker-corroboration:
     build:
       context: .
