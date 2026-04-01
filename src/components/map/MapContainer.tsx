@@ -10,6 +10,20 @@ import MapFocus from "./MapFocus";
 import MapLayers from "./MapLayers";
 import MapLegend from "./MapLegend";
 
+const COUNTRY_LABELS: { name: string; lng: number; lat: number }[] = [
+  { name: 'ISRAEL', lng: 35.0, lat: 31.5 },
+  { name: 'IRAN', lng: 53.0, lat: 32.5 },
+  { name: 'IRAQ', lng: 44.0, lat: 33.0 },
+  { name: 'SYRIA', lng: 38.5, lat: 35.0 },
+  { name: 'SAUDI ARABIA', lng: 45.0, lat: 24.0 },
+  { name: 'PERSIAN GULF', lng: 51.0, lat: 26.5 },
+  { name: 'RED SEA', lng: 38.0, lat: 21.0 },
+  { name: 'MEDITERRANEAN', lng: 32.0, lat: 34.5 },
+  { name: 'LEBANON', lng: 35.8, lat: 33.9 },
+  { name: 'EGYPT', lng: 30.0, lat: 26.0 },
+  { name: 'TURKEY', lng: 35.0, lat: 39.0 },
+];
+
 const MAP_STYLE =
   process.env.NEXT_PUBLIC_MAP_STYLE ||
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
@@ -73,6 +87,13 @@ export default function MapContainer() {
     );
 
     map.on("load", () => {
+      COUNTRY_LABELS.forEach(({ name, lng, lat }) => {
+        const el = document.createElement('div');
+        el.className = 'text-[10px] font-bold text-white/40 tracking-wider pointer-events-none select-none';
+        el.style.whiteSpace = 'nowrap';
+        el.textContent = name;
+        new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+      });
       setMapReady(true);
     });
 

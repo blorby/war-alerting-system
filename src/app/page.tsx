@@ -11,6 +11,7 @@ import TypeFilter from "@/components/filters/TypeFilter";
 import AlertFeed from "@/components/alerts/AlertFeed";
 import ThreatPanel from "@/components/threats/ThreatPanel";
 import TimelineBar from "@/components/timeline/TimelineBar";
+import BottomPanels from "@/components/panels/BottomPanels";
 import { useAppStore } from "@/lib/store";
 
 // MapContainer uses maplibre-gl which requires window, so load it client-only
@@ -62,6 +63,9 @@ export default function Dashboard() {
         </Sidebar>
         <MapContainer />
       </div>
+
+      {/* Bottom panels */}
+      <BottomPanels />
 
       {/* Timeline */}
       <TimelineBar isLive={isLive} />
