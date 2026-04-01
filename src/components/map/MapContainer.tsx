@@ -87,15 +87,26 @@ const LAUNCH_ORIGINS: Record<string, [number, number]> = {
   syria: [36.28, 33.51],
 };
 
+// Hebrew alert titles that indicate missile/rocket attacks
+const MISSILE_ALERT_TITLES = ['ירי רקטות וטילים', 'חדירת כלי טיס עוין'];
+
+function isMissileEvent(event: { type: string; severity: string; title: string }): boolean {
+  if (event.type === 'strike' || event.type === 'missile') return true;
+  if (event.type === 'alert' && event.severity === 'critical') {
+    return MISSILE_ALERT_TITLES.some((t) => event.title.includes(t));
+  }
+  return false;
+}
+
 function guessOrigin(event: { title: string; lat: number; lng: number }): [number, number] | null {
   const t = event.title.toLowerCase();
-  if (t.includes('iran')) return LAUNCH_ORIGINS.iran;
-  if (t.includes('hezbollah') || t.includes('lebanon')) return LAUNCH_ORIGINS.lebanon;
-  if (t.includes('houthi') || t.includes('yemen')) return LAUNCH_ORIGINS.yemen;
-  if (t.includes('gaza') || t.includes('hamas')) return LAUNCH_ORIGINS.gaza;
-  if (t.includes('iraq')) return LAUNCH_ORIGINS.iraq;
-  if (t.includes('syria')) return LAUNCH_ORIGINS.syria;
-  // If target is in Israel, default origin is Iran
+  if (t.includes('iran') || t.includes('איראן')) return LAUNCH_ORIGINS.iran;
+  if (t.includes('hezbollah') || t.includes('lebanon') || t.includes('חיזבאללה') || t.includes('לבנון')) return LAUNCH_ORIGINS.lebanon;
+  if (t.includes('houthi') || t.includes('yemen') || t.includes('חות\'י') || t.includes('תימן')) return LAUNCH_ORIGINS.yemen;
+  if (t.includes('gaza') || t.includes('hamas') || t.includes('עזה') || t.includes('חמאס')) return LAUNCH_ORIGINS.gaza;
+  if (t.includes('iraq') || t.includes('עיראק')) return LAUNCH_ORIGINS.iraq;
+  if (t.includes('syria') || t.includes('סוריה')) return LAUNCH_ORIGINS.syria;
+  // If target is in Israel, default origin is Iran (Iran-Israel war context)
   if (event.lat >= 29 && event.lat <= 34 && event.lng >= 34 && event.lng <= 36.5) {
     return LAUNCH_ORIGINS.iran;
   }
@@ -203,7 +214,7 @@ export default function MapContainer() {
   const trajectoryGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
     const features: GeoJSON.Feature[] = [];
     for (const e of geoEvents) {
-      if (e.type !== 'strike' && e.type !== 'missile') continue;
+      if (!isMissileEvent(e)) continue;
       const origin = guessOrigin({ title: e.title, lat: e.lat!, lng: e.lng! });
       if (!origin) continue;
       const target: [number, number] = [e.lng!, e.lat!];

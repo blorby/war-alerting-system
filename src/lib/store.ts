@@ -239,29 +239,34 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   fetchEvents: async (opts) => {
     try {
-      const params = new URLSearchParams();
       if (opts?.since) {
-        params.set('since', opts.since);
-        params.set('limit', '200');
-      } else {
-        params.set('limit', '50');
-        params.set('active', 'true');
-      }
-      const res = await fetch(`/api/events?${params}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (opts?.since) {
-        // Merge with existing events, deduplicate by id, keep latest 200
+        const params = new URLSearchParams({ since: opts.since, limit: '200' });
+        const res = await fetch(`/api/events?${params}`);
+        if (!res.ok) return;
+        const data = await res.json();
         set((state) => {
           const merged = new Map(state.events.map((e) => [e.id, e]));
           for (const e of data.events ?? []) merged.set(e.id, e);
           const all = [...merged.values()].sort(
             (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
           );
-          return { events: all.slice(0, 200) };
+          return { events: all.slice(0, 500) };
         });
       } else {
-        set({ events: data.events ?? [] });
+        // Fetch alerts + other events separately so alerts aren't drowned out by flights
+        const [alertRes, otherRes] = await Promise.all([
+          fetch('/api/events?limit=200&active=true&type=alert'),
+          fetch('/api/events?limit=100&active=true'),
+        ]);
+        const alerts = alertRes.ok ? ((await alertRes.json()).events ?? []) : [];
+        const others = otherRes.ok ? ((await otherRes.json()).events ?? []) : [];
+        const merged = new Map<string, EventData>();
+        for (const e of alerts) merged.set(e.id, e);
+        for (const e of others) merged.set(e.id, e);
+        const all = [...merged.values()].sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+        set({ events: all.slice(0, 500) });
       }
     } catch {
       // silently ignore fetch errors
