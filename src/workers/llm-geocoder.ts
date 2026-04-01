@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq, isNull, desc, and } from 'drizzle-orm';
-import Anthropic from '@anthropic-ai/sdk';
+import AnthropicBedrock from '@anthropic-ai/bedrock-sdk';
 import { events } from '../lib/db/schema';
 
 // --- Database setup ---
@@ -9,10 +9,12 @@ import { events } from '../lib/db/schema';
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool, { schema: { events } });
 
-// --- Anthropic setup ---
+// --- AWS Bedrock setup ---
 
-const anthropic = new Anthropic();
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
+const anthropic = new AnthropicBedrock({
+  awsRegion: process.env.AWS_REGION || 'us-east-1',
+});
+const MODEL = process.env.BEDROCK_MODEL || 'us.anthropic.claude-opus-4-6-v1';
 
 // --- Configuration ---
 

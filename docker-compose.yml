@@ -65,7 +65,12 @@ services:
     command: ["node", "dist/workers/ai-assessment.js"]
     environment:
       - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - BEDROCK_MODEL=${BEDROCK_MODEL:-us.anthropic.claude-opus-4-6-v1}
+    env_file:
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -162,7 +167,10 @@ services:
     command: ["node", "dist/workers/llm-geocoder.js"]
     environment:
       - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - BEDROCK_MODEL=${BEDROCK_MODEL:-us.anthropic.claude-opus-4-6-v1}
     env_file:
       - .env
     depends_on:
