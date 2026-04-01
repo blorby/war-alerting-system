@@ -52,6 +52,7 @@ export default function TimelineBar({
   isLive: _isLiveProp = true,
 }: TimelineBarProps) {
   const [now, setNow] = useState<Date>(() => new Date());
+  const [mobileExpanded, setMobileExpanded] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -107,7 +108,6 @@ export default function TimelineBar({
       rEnd = now.getTime();
       rStart = rEnd - rangeMs;
 
-      // Check if events are too clustered — auto-zoom if all in one bucket
       const eventTimestamps = events
         .map((e) => new Date(e.timestamp).getTime())
         .filter((ts) => ts >= rStart && ts <= rEnd);
@@ -118,19 +118,16 @@ export default function TimelineBar({
         const span = maxTs - minTs;
         const bucketWidth = (rEnd - rStart) / BUCKET_COUNT;
 
-        // If all events fit in fewer than 3 buckets, zoom to event span with padding
         if (span < bucketWidth * 3 && span > 0) {
-          const padding = span * 0.5 || 60_000; // at least 1 minute padding
+          const padding = span * 0.5 || 60_000;
           rStart = minTs - padding;
           rEnd = maxTs + padding;
         }
       }
     } else {
-      // "All" range: span from oldest to newest event
       const timestamps = events.map((e) => new Date(e.timestamp).getTime());
       const oldest = Math.min(...timestamps);
       const newest = Math.max(...timestamps);
-      // Add a small buffer so the newest event doesn't sit exactly on the edge
       rStart = oldest;
       rEnd = newest === oldest ? newest + 1 : newest;
     }
@@ -192,7 +189,156 @@ export default function TimelineBar({
 
   return (
     <div className="flex shrink-0 flex-col border-t border-border bg-surface">
-      <div className="flex items-center gap-3 px-4 py-1">
+      {/* Mobile compact bar + expand toggle */}
+      <div className="flex items-center gap-2 px-2 py-1 md:hidden">
+        {/* Playback controls */}
+        <button
+          className="rounded p-1 text-muted hover:text-foreground"
+          aria-label="Skip back"
+          onClick={() => {
+            const stepMs = getRangeMs(selectedRange) ? (getRangeMs(selectedRange)! / BUCKET_COUNT) : 3600000;
+            stepBackward(stepMs);
+          }}
+        >
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
+          </svg>
+        </button>
+        <button
+          className="rounded p-1 text-muted hover:text-foreground"
+          aria-label={isPlaying ? "Pause" : "Play"}
+          onClick={() => {
+            if (playbackTime === null) setPlaybackTime(new Date());
+            setIsPlaying(!isPlaying);
+          }}
+        >
+          {isPlaying ? (
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+            </svg>
+          ) : (
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+            </svg>
+          )}
+        </button>
+        <button
+          className="rounded p-1 text-muted hover:text-foreground"
+          aria-label="Skip forward"
+          onClick={() => {
+            const stepMs = getRangeMs(selectedRange) ? (getRangeMs(selectedRange)! / BUCKET_COUNT) : 3600000;
+            stepForward(stepMs);
+          }}
+        >
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 4.5l7.5 7.5-7.5 7.5m6-15l7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
+
+        {/* LIVE */}
+        <button
+          className={`rounded px-2 py-0.5 text-xs font-bold transition-colors ${
+            playbackTime === null
+              ? "bg-green-500/20 text-green-400"
+              : "bg-surface-elevated text-muted"
+          }`}
+          onClick={() => { goLive(); setLiveWindow(null); }}
+        >
+          LIVE
+        </button>
+
+        {/* Time */}
+        <span className={`text-[10px] ${playbackTime ? "text-warning" : "text-muted"} ml-auto`} suppressHydrationWarning>
+          {displayTime.toLocaleTimeString("en-US", { hour12: false })}
+        </span>
+
+        {/* Expand toggle */}
+        <button
+          onClick={() => setMobileExpanded(!mobileExpanded)}
+          className="p-1 text-muted hover:text-foreground"
+          aria-label={mobileExpanded ? "Collapse timeline" : "Expand timeline"}
+        >
+          <svg className={`h-3.5 w-3.5 transition-transform ${mobileExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile expanded content */}
+      {mobileExpanded && (
+        <div className="border-t border-border/50 px-2 py-1 md:hidden">
+          {/* Live window filter */}
+          {playbackTime === null && (
+            <div className="flex items-center gap-1 mb-1">
+              <span className="text-[10px] text-muted mr-1">Window:</span>
+              {LIVE_WINDOWS.map((w) => (
+                <button
+                  key={w}
+                  onClick={() => setLiveWindow(liveWindow === w ? null : w)}
+                  className={`rounded px-2 py-0.5 text-[10px] transition-colors ${
+                    liveWindow === w
+                      ? "bg-green-500/20 text-green-400 font-medium"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {LIVE_WINDOW_LABELS[w]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Speed + time range */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-0.5">
+              <span className="text-[10px] text-muted">Speed:</span>
+              {SPEEDS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setPlaybackSpeed(s)}
+                  className={`rounded px-1.5 py-0.5 text-[10px] ${
+                    playbackSpeed === s ? "bg-info/20 text-info" : "text-muted"
+                  }`}
+                >
+                  {s}x
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-0.5 ml-auto">
+              {TIME_RANGES.map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setSelectedRange(range)}
+                  className={`rounded px-1.5 py-0.5 text-[10px] ${
+                    range === selectedRange
+                      ? "bg-info/20 text-info"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Histogram */}
+          <div className="flex items-end gap-px mt-1" style={{ height: 24 }}>
+            <div className="relative flex flex-1 items-end gap-px">
+              {buckets.map((h, i) => (
+                <div key={i} className="flex-1 rounded-t bg-critical/30" style={{ height: `${h}%` }} />
+              ))}
+              {cursorPercent !== null && (
+                <div
+                  className="absolute top-0 bottom-0 w-0.5 bg-warning/80 pointer-events-none z-10"
+                  style={{ left: `${cursorPercent}%` }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======= Desktop full controls (hidden on mobile) ======= */}
+      <div className="hidden md:flex items-center gap-3 px-4 py-1">
         {/* Playback controls */}
         <div className="flex items-center gap-1">
           <button
@@ -337,8 +483,8 @@ export default function TimelineBar({
       </div>
       <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
-      {/* Event density histogram with playback cursor */}
-      <div className="flex flex-1 items-end gap-px px-4 pb-1">
+      {/* Event density histogram (desktop only) */}
+      <div className="hidden md:flex flex-1 items-end gap-px px-4 pb-1">
         <div className="relative flex flex-1 items-end gap-px" style={{ minHeight: 24 }}>
           {buckets.map((h, i) => (
             <div
@@ -358,13 +504,12 @@ export default function TimelineBar({
         </div>
       </div>
 
-      {/* Threat Level row */}
-      <div className="flex items-center gap-4 border-t border-border/50 px-4 py-1">
+      {/* Threat Level row (desktop only) */}
+      <div className="hidden md:flex items-center gap-4 border-t border-border/50 px-4 py-1">
         <span className="text-[10px] font-bold tracking-wider text-muted uppercase leading-tight">
           THREAT<br />LEVEL
         </span>
 
-        {/* Sparkline */}
         {sparklinePath && (
           <svg width="120" height="20" className="shrink-0" viewBox="0 0 120 20">
             <path d={sparklinePath} fill="none" stroke="#3b82f6" strokeWidth="1.5" />

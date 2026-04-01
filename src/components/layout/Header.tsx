@@ -5,6 +5,7 @@ import { useAppStore } from "@/lib/store";
 interface HeaderProps {
   isLive?: boolean;
   lastUpdate?: Date | null;
+  onMenuToggle?: () => void;
 }
 
 function getThreatColor(score: number): string {
@@ -25,6 +26,7 @@ function getThreatLabel(score: number): string {
 export default function Header({
   isLive = true,
   lastUpdate,
+  onMenuToggle,
 }: HeaderProps) {
   const threat = useAppStore((s) => s.threat);
   const score = threat?.overallScore ?? 0;
@@ -40,16 +42,31 @@ export default function Header({
   };
 
   return (
-    <header className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-surface px-4">
-      <div className="flex items-center gap-4">
-        <h1 className="text-sm font-bold tracking-wide">
+    <header className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-surface px-2 md:px-4">
+      <div className="flex items-center gap-2 md:gap-4 min-w-0">
+        {/* Mobile hamburger */}
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            className="md:hidden shrink-0 p-1 text-muted hover:text-foreground"
+            aria-label="Menu"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+        )}
+
+        <h1 className="text-sm font-bold tracking-wide shrink-0">
           <span className="text-foreground">WAR</span>
-          <span className="text-muted">ALERTING</span>
-          <span className="text-foreground">SYSTEM</span>
+          <span className="text-muted hidden sm:inline">ALERTING</span>
+          <span className="text-foreground hidden sm:inline">SYSTEM</span>
+          {/* Short name on mobile */}
+          <span className="text-muted sm:hidden">AS</span>
         </h1>
 
         {isLive && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
@@ -59,12 +76,12 @@ export default function Header({
         )}
 
         {threat !== null && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2 shrink-0">
             <span className={`text-xs font-bold ${color}`}>
-              THREAT: {label}
+              <span className="hidden sm:inline">THREAT: </span>{label}
             </span>
             <span
-              className={`rounded px-1.5 py-0.5 text-xs font-bold ${color} bg-surface-elevated`}
+              className={`rounded px-1 md:px-1.5 py-0.5 text-xs font-bold ${color} bg-surface-elevated`}
             >
               ({score.toFixed(1)})
             </span>
@@ -72,7 +89,7 @@ export default function Header({
         )}
 
         {lastUpdate && (
-          <div className="flex items-center gap-1.5">
+          <div className="hidden sm:flex items-center gap-1.5">
             <span className={`h-1.5 w-1.5 rounded-full ${getConnectionColor()}`} />
             <span className="text-xs text-muted">
               upd {formatTimeAgo(lastUpdate)}
@@ -81,7 +98,7 @@ export default function Header({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="hidden sm:flex items-center gap-2">
         <button
           disabled
           title="Coming soon"

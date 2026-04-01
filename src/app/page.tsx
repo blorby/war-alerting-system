@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Header from "@/components/layout/Header";
 import AnnouncementBanner from "@/components/layout/AnnouncementBanner";
@@ -34,6 +34,9 @@ export default function Dashboard() {
   const connectSSE = useAppStore((s) => s.connectSSE);
   const disconnectSSE = useAppStore((s) => s.disconnectSSE);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [panelsOpen, setPanelsOpen] = useState(false);
+
   useEffect(() => {
     fetchEvents();
     fetchThreat();
@@ -55,12 +58,16 @@ export default function Dashboard() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <Header isLive={isLive} lastUpdate={lastUpdate} />
+      <Header
+        isLive={isLive}
+        lastUpdate={lastUpdate}
+        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+      />
       <AnnouncementBanner />
 
       {/* Main content: sidebar + map */}
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar>
+        <Sidebar mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)}>
           <FrontFilter />
           <TypeFilter />
           <AlertFeed />
@@ -69,14 +76,37 @@ export default function Dashboard() {
         <MapContainer />
       </div>
 
-      {/* Bottom panels */}
-      <BottomPanels />
+      {/* Mobile panels toggle tab */}
+      <button
+        onClick={() => setPanelsOpen(!panelsOpen)}
+        className={`md:hidden flex items-center justify-center gap-1.5 border-t border-border bg-surface px-4 py-1.5 text-xs transition-colors ${
+          panelsOpen ? "text-info" : "text-muted"
+        }`}
+      >
+        <svg
+          className={`h-3 w-3 transition-transform ${panelsOpen ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+        </svg>
+        {panelsOpen ? "Hide Panels" : "Show Panels"}
+      </button>
+
+      {/* Bottom panels — hidden on mobile unless toggled */}
+      <div className={`${panelsOpen ? "" : "hidden"} md:block`}>
+        <BottomPanels />
+      </div>
 
       {/* Timeline */}
       <TimelineBar isLive={isLive} />
 
-      {/* News ticker */}
-      <NewsTicker />
+      {/* News ticker — hidden on mobile */}
+      <div className="hidden md:block">
+        <NewsTicker />
+      </div>
     </div>
   );
 }
