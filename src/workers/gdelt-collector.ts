@@ -4,6 +4,7 @@ import { events } from '../lib/db/schema';
 import { GDELT_API_URL, GDELT_QUERY, GDELT_MAX_RECORDS, INTERVAL_MS } from './lib/gdelt-config';
 import { sha256 } from './lib/normalize';
 import { NewEvent } from './lib/base-collector';
+import { geocodeText } from './lib/geocode';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -51,15 +52,16 @@ function parseSeenDate(seendate: string): Date {
 
 function articleToEvent(article: GdeltArticle): NewEvent {
   const sourceId = `gdelt:${article.url}`;
+  const geo = geocodeText(article.title || '');
   return {
     timestamp: parseSeenDate(article.seendate),
     type: 'news',
     severity: 'info',
     title: article.title || '(untitled)',
     description: article.domain ? `Source: ${article.domain}` : null,
-    locationName: null,
-    lat: null,
-    lng: null,
+    locationName: geo?.locationName ?? null,
+    lat: geo?.lat ?? null,
+    lng: geo?.lng ?? null,
     source: 'gdelt',
     sourceId,
     country: null,

@@ -5,6 +5,7 @@ import { SCRAPER_SITES, INTERVAL_MS, ScraperSiteConfig } from './lib/scraper-con
 import { parseSite, ScrapedItem } from './lib/scraper-parser';
 import { scraperDedupHash } from './lib/scraper-dedup';
 import { NewEvent } from './lib/base-collector';
+import { geocodeText } from './lib/geocode';
 
 const FETCH_TIMEOUT_MS = 15_000;
 const USER_AGENT =
@@ -20,15 +21,16 @@ function sleep(ms: number): Promise<void> {
 }
 
 function itemToEvent(item: ScrapedItem, site: ScraperSiteConfig): NewEvent {
+  const geo = geocodeText(item.title || '') || geocodeText(item.snippet || '');
   return {
     timestamp: item.date || new Date(),
     type: 'news',
     severity: 'info',
     title: item.title,
     description: item.snippet?.slice(0, 500) || null,
-    locationName: null,
-    lat: null,
-    lng: null,
+    locationName: geo?.locationName ?? null,
+    lat: geo?.lat ?? null,
+    lng: geo?.lng ?? null,
     source: site.source,
     sourceId: `scraper:${site.source}:${item.url}`,
     country: site.country,

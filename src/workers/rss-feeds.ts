@@ -5,6 +5,7 @@ import { events } from '../lib/db/schema';
 import { RSS_FEEDS, RssFeedConfig } from './lib/rss-config';
 import { rssDedupHash } from './lib/rss-dedup';
 import { NewEvent } from './lib/base-collector';
+import { geocodeText } from './lib/geocode';
 
 const INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const FEED_TIMEOUT_MS = 15_000;
@@ -37,6 +38,7 @@ function parseItemDate(item: Parser.Item): Date {
 function itemToEvent(item: Parser.Item, feedConfig: RssFeedConfig): NewEvent {
   const sourceId = item.guid || item.link || '';
   const description = (item.contentSnippet || item.content || '').slice(0, 500) || null;
+  const geo = geocodeText(item.title || '') || geocodeText(description || '');
 
   return {
     timestamp: parseItemDate(item),
@@ -44,9 +46,9 @@ function itemToEvent(item: Parser.Item, feedConfig: RssFeedConfig): NewEvent {
     severity: 'info',
     title: item.title || '(untitled)',
     description,
-    locationName: null,
-    lat: null,
-    lng: null,
+    locationName: geo?.locationName ?? null,
+    lat: geo?.lat ?? null,
+    lng: geo?.lng ?? null,
     source: feedConfig.source,
     sourceId,
     country: null,
