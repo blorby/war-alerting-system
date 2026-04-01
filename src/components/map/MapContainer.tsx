@@ -295,6 +295,8 @@ export default function MapContainer() {
     });
 
     mapRef.current = map;
+    // Expose for debugging
+    (window as unknown as Record<string, unknown>).__map = map;
 
     return () => {
       map.remove();
@@ -521,6 +523,7 @@ export default function MapContainer() {
 
       const beforeLayer = map.getLayer(EVENTS_GLOW_LAYER) ? EVENTS_GLOW_LAYER : undefined;
 
+      // Place polygons ABOVE heatmap for visibility
       map.addLayer(
         {
           id: POLYGONS_FILL_LAYER,
@@ -528,21 +531,19 @@ export default function MapContainer() {
           source: POLYGONS_SOURCE,
           paint: {
             'fill-color': [
-              'match',
-              ['get', 'severity'],
-              'critical', '#ef4444',
-              'moderate', '#f97316',
-              'info', '#3b82f6',
-              'cleared', '#22c55e',
+              'case',
+              ['==', ['get', 'severity'], 'critical'], '#ef4444',
+              ['==', ['get', 'severity'], 'moderate'], '#f97316',
+              ['==', ['get', 'severity'], 'info'], '#3b82f6',
+              ['==', ['get', 'severity'], 'cleared'], '#22c55e',
               'rgba(0,0,0,0)',
             ] as unknown as maplibregl.ExpressionSpecification,
             'fill-opacity': [
-              'match',
-              ['get', 'severity'],
-              'critical', 0.35,
-              'moderate', 0.3,
-              'info', 0.2,
-              'cleared', 0.15,
+              'case',
+              ['==', ['get', 'severity'], 'critical'], 0.45,
+              ['==', ['get', 'severity'], 'moderate'], 0.35,
+              ['==', ['get', 'severity'], 'info'], 0.25,
+              ['==', ['get', 'severity'], 'cleared'], 0.2,
               0,
             ] as unknown as maplibregl.ExpressionSpecification,
           },
@@ -557,22 +558,20 @@ export default function MapContainer() {
           source: POLYGONS_SOURCE,
           paint: {
             'line-color': [
-              'match',
-              ['get', 'severity'],
-              'critical', '#ef4444',
-              'moderate', '#f97316',
-              'info', '#3b82f6',
-              'cleared', '#22c55e',
+              'case',
+              ['==', ['get', 'severity'], 'critical'], '#ef4444',
+              ['==', ['get', 'severity'], 'moderate'], '#f97316',
+              ['==', ['get', 'severity'], 'info'], '#3b82f6',
+              ['==', ['get', 'severity'], 'cleared'], '#22c55e',
               'rgba(0,0,0,0)',
             ] as unknown as maplibregl.ExpressionSpecification,
-            'line-width': 2,
+            'line-width': 2.5,
             'line-opacity': [
-              'match',
-              ['get', 'severity'],
-              'critical', 0.8,
-              'moderate', 0.6,
-              'info', 0.4,
-              'cleared', 0.3,
+              'case',
+              ['==', ['get', 'severity'], 'critical'], 0.9,
+              ['==', ['get', 'severity'], 'moderate'], 0.7,
+              ['==', ['get', 'severity'], 'info'], 0.5,
+              ['==', ['get', 'severity'], 'cleared'], 0.4,
               0,
             ] as unknown as maplibregl.ExpressionSpecification,
           },
