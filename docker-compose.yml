@@ -95,5 +95,41 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  worker-aviation:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["node", "dist/workers/aviation-tracker.js"]
+    environment:
+      - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker-gdelt:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["node", "dist/workers/gdelt-collector.js"]
+    environment:
+      - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker-web-scrapers:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: ["node", "dist/workers/web-scrapers.js"]
+    environment:
+      - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
