@@ -491,35 +491,25 @@ export default function MapContainer() {
     }
   }, [geoEvents, mapReady]);
 
-  // --- Alert zone polygons ---
+  // --- Alert zone polygons: load geojson once, then update severity ---
+  const polygonBaseRef = useRef<GeoJSON.FeatureCollection | null>(null);
+
+  // Load polygon geojson once when map is ready
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
+    if (map.getSource(POLYGONS_SOURCE)) return; // already loaded
 
-    const loadPolygons = async () => {
-      let polygonData: GeoJSON.FeatureCollection;
+    (async () => {
       try {
         const res = await fetch('/district-polygons.geojson');
         if (!res.ok) return;
-        polygonData = await res.json();
-      } catch {
-        return;
-      }
+        const data: GeoJSON.FeatureCollection = await res.json();
+        polygonBaseRef.current = data;
 
-      // Tag each feature with current alert severity
-      for (const feature of polygonData.features) {
-        const areaid = (feature.properties as Record<string, unknown>)?.areaid as number;
-        const severity = areaAlertStatus.get(areaid) ?? null;
-        (feature.properties as Record<string, unknown>).severity = severity;
-      }
+        // Initialize with empty severity
+        map.addSource(POLYGONS_SOURCE, { type: 'geojson', data });
 
-      const source = map.getSource(POLYGONS_SOURCE) as maplibregl.GeoJSONSource | undefined;
-      if (source) {
-        source.setData(polygonData);
-      } else {
-        map.addSource(POLYGONS_SOURCE, { type: 'geojson', data: polygonData });
-
-        // Insert polygon layers BELOW the glow layer so event markers stay on top
         const beforeLayer = map.getLayer(EVENTS_GLOW_LAYER) ? EVENTS_GLOW_LAYER : undefined;
 
         map.addLayer(
@@ -535,15 +525,15 @@ export default function MapContainer() {
                 'moderate', '#f97316',
                 'info', '#3b82f6',
                 'cleared', '#22c55e',
-                'transparent',
+                'rgba(0,0,0,0)',
               ] as unknown as maplibregl.ExpressionSpecification,
               'fill-opacity': [
                 'match',
                 ['get', 'severity'],
-                'critical', 0.3,
-                'moderate', 0.25,
-                'info', 0.15,
-                'cleared', 0.1,
+                'critical', 0.35,
+                'moderate', 0.3,
+                'info', 0.2,
+                'cleared', 0.15,
                 0,
               ] as unknown as maplibregl.ExpressionSpecification,
             },
@@ -564,23 +554,51 @@ export default function MapContainer() {
                 'moderate', '#f97316',
                 'info', '#3b82f6',
                 'cleared', '#22c55e',
-                'transparent',
+                'rgba(0,0,0,0)',
               ] as unknown as maplibregl.ExpressionSpecification,
-              'line-width': [
-                'case',
-                ['!=', ['get', 'severity'], null],
-                1.5,
+              'line-width': 2,
+              'line-opacity': [
+                'match',
+                ['get', 'severity'],
+                'critical', 0.8,
+                'moderate', 0.6,
+                'info', 0.4,
+                'cleared', 0.3,
                 0,
               ] as unknown as maplibregl.ExpressionSpecification,
-              'line-opacity': 0.6,
             },
           },
           beforeLayer,
         );
+      } catch {
+        // ignore fetch errors
       }
+    })();
+  }, [mapReady]);
+
+  // Update polygon severity whenever alert status changes
+  useEffect(() => {
+    const map = mapRef.current;
+    const baseData = polygonBaseRef.current;
+    if (!map || !mapReady || !baseData) return;
+
+    const source = map.getSource(POLYGONS_SOURCE) as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+
+    // Deep clone and tag with severity
+    const updated: GeoJSON.FeatureCollection = {
+      type: 'FeatureCollection',
+      features: baseData.features.map((feature) => {
+        const areaid = (feature.properties as Record<string, unknown>)?.areaid as number;
+        const severity = areaAlertStatus.get(areaid) ?? null;
+        return {
+          ...feature,
+          properties: { ...feature.properties, severity },
+        };
+      }),
     };
 
-    loadPolygons();
+    source.setData(updated);
   }, [areaAlertStatus, mapReady]);
 
   // --- Missile/strike trajectory arcs ---
