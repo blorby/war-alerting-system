@@ -32,6 +32,7 @@ interface DistrictEntry {
   lng: number;
   areaname: string;
   migun_time: number;
+  areaid: number;
 }
 
 const OREF_DISTRICTS_URL =
@@ -145,6 +146,7 @@ async function main() {
         lng: coords.lng,
         areaname: d.areaname,
         migun_time: d.migun_time ?? 0,
+        areaid: d.areaid,
       };
     }
   }

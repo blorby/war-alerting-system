@@ -7,7 +7,7 @@ import { join } from 'path';
 // Load districts once at startup.
 // At runtime __dirname is dist/workers/, districts.json compiles to dist/lib/geo/districts.json
 const districtsPath = join(__dirname, '../lib/geo/districts.json');
-const districts: Record<string, { lat: number; lng: number; areaname: string; migun_time: number }> =
+const districts: Record<string, { lat: number; lng: number; areaname: string; migun_time: number; areaid?: number }> =
   JSON.parse(readFileSync(districtsPath, 'utf-8'));
 
 interface OrefCurrentAlert {
