@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
 
 const TIME_RANGES = ["24h", "48h", "7d", "30d", "All"] as const;
@@ -25,14 +25,17 @@ function getRangeMs(range: TimeRange): number | null {
 
 interface TimelineBarProps {
   isLive?: boolean;
-  currentTime?: Date;
 }
 
 export default function TimelineBar({
   isLive = true,
-  currentTime,
 }: TimelineBarProps) {
-  const now = currentTime ?? new Date();
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
   const [selectedRange, setSelectedRange] = useState<TimeRange>("24h");
   const events = useAppStore((state) => state.events);
 
@@ -85,17 +88,17 @@ export default function TimelineBar({
       <div className="flex items-center gap-3 px-4 py-1">
         {/* Playback controls */}
         <div className="flex items-center gap-1">
-          <button className="rounded p-1 text-muted hover:text-foreground" aria-label="Skip back">
+          <button className="rounded p-1 text-muted opacity-50 cursor-not-allowed" aria-label="Skip back" disabled title="Coming soon">
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
             </svg>
           </button>
-          <button className="rounded p-1 text-muted hover:text-foreground" aria-label="Pause">
+          <button className="rounded p-1 text-muted opacity-50 cursor-not-allowed" aria-label="Pause" disabled title="Coming soon">
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
             </svg>
           </button>
-          <button className="rounded p-1 text-muted hover:text-foreground" aria-label="Skip forward">
+          <button className="rounded p-1 text-muted opacity-50 cursor-not-allowed" aria-label="Skip forward" disabled title="Coming soon">
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 4.5l7.5 7.5-7.5 7.5m6-15l7.5 7.5-7.5 7.5" />
             </svg>
@@ -104,11 +107,13 @@ export default function TimelineBar({
 
         {/* LIVE button */}
         <button
-          className={`rounded px-3 py-0.5 text-xs font-bold ${
+          className={`rounded px-3 py-0.5 text-xs font-bold cursor-not-allowed ${
             isLive
               ? "bg-green-500/20 text-green-500"
-              : "bg-surface-elevated text-muted hover:text-foreground"
+              : "bg-surface-elevated text-muted"
           }`}
+          disabled
+          title="Coming soon"
         >
           LIVE
         </button>

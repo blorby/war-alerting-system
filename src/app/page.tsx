@@ -62,7 +62,7 @@ export default function Dashboard() {
       </div>
 
       {/* Timeline */}
-      <TimelineBar isLive={isLive} currentTime={new Date()} />
+      <TimelineBar isLive={isLive} />
 
       {/* News ticker */}
       <NewsTicker />
