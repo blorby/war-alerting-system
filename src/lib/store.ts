@@ -240,7 +240,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchEvents: async (opts) => {
     try {
       if (opts?.since) {
-        const params = new URLSearchParams({ since: opts.since, limit: '200' });
+        const params = new URLSearchParams({ since: opts.since, limit: '1000' });
         const res = await fetch(`/api/events?${params}`);
         if (!res.ok) return;
         const data = await res.json();

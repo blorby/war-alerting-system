@@ -165,9 +165,6 @@ export default function MapContainer() {
 
   const LIVE_WINDOW_MS: Record<string, number> = { '15m': 15*60*1000, '1h': 60*60*1000, '3h': 3*60*60*1000 };
 
-  // Raw store events for polygon alert status (always show all alerts)
-  const allStoreEvents = useAppStore((s) => s.events);
-
   const filteredEvents = useAppStore(selectFilteredEvents);
   const liveWindow = useAppStore((s) => s.liveWindow);
   const playbackTime = useAppStore((s) => s.playbackTime);
@@ -203,7 +200,7 @@ export default function MapContainer() {
 
     const securityTypes = new Set(['alert', 'strike', 'missile', 'thermal']);
 
-    for (const e of allStoreEvents) {
+    for (const e of events) {
       if (!securityTypes.has(e.type)) continue;
 
       const name = e.locationName;
@@ -238,7 +235,7 @@ export default function MapContainer() {
     }
 
     return { statusMap, areaFallback };
-  }, [allStoreEvents]);
+  }, [events]);
 
   const trajectoryGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
     const features: GeoJSON.Feature[] = [];

@@ -1,6 +1,7 @@
 import Parser from 'rss-parser';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import * as iconv from 'iconv-lite';
 import { events } from '../lib/db/schema';
 import { RSS_FEEDS, RssFeedConfig } from './lib/rss-config';
 import { rssDedupHash } from './lib/rss-dedup';
@@ -13,6 +14,47 @@ const FEED_TIMEOUT_MS = 15_000;
 const parser = new Parser({
   timeout: FEED_TIMEOUT_MS,
 });
+
+// Encodings that need iconv-lite conversion (not natively supported by Node)
+const NON_UTF8_PATTERN = /windows-1255|windows-1256|iso-8859-8|iso-8859-6/i;
+
+/**
+ * Fetch an RSS feed as a UTF-8 string, handling non-UTF-8 encodings like Windows-1255.
+ * Returns the XML string ready for parser.parseString().
+ */
+async function fetchFeedAsUtf8(url: string): Promise<string> {
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
+    headers: { 'User-Agent': 'war-alerting-system/0.1 (rss-feeds)' },
+  });
+  if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
+
+  const contentType = res.headers.get('content-type') || '';
+  const charsetMatch = contentType.match(/charset=([\w-]+)/i);
+  const charset = charsetMatch?.[1] || '';
+
+  if (NON_UTF8_PATTERN.test(charset)) {
+    const buf = Buffer.from(await res.arrayBuffer());
+    return iconv.decode(buf, charset);
+  }
+
+  // Check the XML declaration for encoding as fallback
+  const text = await res.text();
+  const xmlEncodingMatch = text.match(/<\?xml[^?]*encoding=["']([\w-]+)["']/i);
+  const xmlEncoding = xmlEncodingMatch?.[1] || '';
+
+  if (NON_UTF8_PATTERN.test(xmlEncoding)) {
+    // Re-fetch as buffer since we already consumed the response as text (corrupted)
+    const res2 = await fetch(url, {
+      signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
+      headers: { 'User-Agent': 'war-alerting-system/0.1 (rss-feeds)' },
+    });
+    const buf = Buffer.from(await res2.arrayBuffer());
+    return iconv.decode(buf, xmlEncoding);
+  }
+
+  return text;
+}
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool, { schema: { events } });
@@ -62,7 +104,11 @@ function itemToEvent(item: Parser.Item, feedConfig: RssFeedConfig): NewEvent {
 }
 
 async function processFeed(feedConfig: RssFeedConfig): Promise<{ fetched: number; inserted: number }> {
-  const feed = await parser.parseURL(feedConfig.url);
+  // Use manual fetch + iconv for Hebrew feeds that may use Windows-1255
+  const needsEncoding = feedConfig.language === 'he';
+  const feed = needsEncoding
+    ? await parser.parseString(await fetchFeedAsUtf8(feedConfig.url))
+    : await parser.parseURL(feedConfig.url);
   let inserted = 0;
 
   for (const item of feed.items) {

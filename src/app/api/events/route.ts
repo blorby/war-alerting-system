@@ -7,12 +7,13 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const limit = Math.min(Number(url.searchParams.get('limit')) || 50, 200);
+    const since = url.searchParams.get('since');
+    const maxLimit = since ? 1000 : 200; // allow more results for time-ranged queries
+    const limit = Math.min(Number(url.searchParams.get('limit')) || 50, maxLimit);
     const offset = Number(url.searchParams.get('offset')) || 0;
     const severity = url.searchParams.get('severity');
     const type = url.searchParams.get('type');
     const active = url.searchParams.get('active');
-    const since = url.searchParams.get('since');
 
     const conditions: SQL[] = [];
 
