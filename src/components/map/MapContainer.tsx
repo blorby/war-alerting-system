@@ -196,28 +196,61 @@ export default function MapContainer() {
   );
 
   const areaAlertStatus = useMemo(() => {
-    const districts = districtsData as Record<string, { areaid: number }>;
+    const districts = districtsData as Record<string, { areaid: number; lat: number; lng: number }>;
     const statusMap = new Map<number, string>();
     const severityRank: Record<string, number> = { critical: 3, moderate: 2, info: 1, cleared: 0 };
+
+    // Build reverse lookup: areaid → center coords (for fallback matching by proximity)
+    const areaCenters = new Map<number, { lat: number; lng: number }>();
+    for (const d of Object.values(districts)) {
+      if (d.areaid && !areaCenters.has(d.areaid)) {
+        areaCenters.set(d.areaid, { lat: d.lat, lng: d.lng });
+      }
+    }
+
+    // Find nearest areaid by lat/lng (within ~15km threshold)
+    function findNearestArea(lat: number, lng: number): number | null {
+      let bestId: number | null = null;
+      let bestDist = 0.15; // ~15km threshold in degrees
+      for (const [areaid, center] of areaCenters) {
+        const dlat = lat - center.lat;
+        const dlng = lng - center.lng;
+        const dist = Math.sqrt(dlat * dlat + dlng * dlng);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestId = areaid;
+        }
+      }
+      return bestId;
+    }
 
     // Security-relevant event types that should trigger polygon highlighting
     const securityTypes = new Set(['alert', 'strike', 'missile', 'thermal']);
 
     for (const e of allStoreEvents) {
-      if (!e.locationName) continue;
       if (!securityTypes.has(e.type)) continue;
 
-      const district = districts[e.locationName];
-      if (!district?.areaid) continue;
+      // Try exact Hebrew name match first
+      let areaid: number | undefined;
+      if (e.locationName) {
+        areaid = districts[e.locationName]?.areaid;
+      }
 
-      const current = statusMap.get(district.areaid);
+      // Fallback: match by lat/lng proximity
+      if (!areaid && e.lat != null && e.lng != null) {
+        areaid = findNearestArea(e.lat, e.lng) ?? undefined;
+      }
+
+      if (!areaid) continue;
+
+      const current = statusMap.get(areaid);
       const currentRank = current ? (severityRank[current] ?? 0) : -1;
       const newRank = severityRank[e.severity] ?? 0;
 
       if (e.isActive && newRank > currentRank) {
-        statusMap.set(district.areaid, e.severity);
-      } else if (!e.isActive && !statusMap.has(district.areaid)) {
-        statusMap.set(district.areaid, 'cleared');
+        statusMap.set(areaid, e.severity);
+      } else if (!e.isActive && !statusMap.has(areaid)) {
+        statusMap.set(areaid, 'cleared');
       }
     }
     return statusMap;

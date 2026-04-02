@@ -137,6 +137,7 @@ async function runCycle(): Promise<void> {
       description: events.description,
       source: events.source,
       timestamp: events.timestamp,
+      locationName: events.locationName,
     })
     .from(events)
     .where(and(isNull(events.lat), isNull(events.lng), eq(events.isActive, true)))
@@ -175,12 +176,17 @@ async function runCycle(): Promise<void> {
       if (!result.lat || !result.lng) continue;
 
       try {
+        // Only set locationName if the event didn't already have one
+        // (preserves original Hebrew names from OREF which are needed for polygon matching)
+        const originalEvent = batch.find((b) => b.id === result.id);
         const updateData: Record<string, unknown> = {
           lat: result.lat,
           lng: result.lng,
-          locationName: result.locationName,
           country: result.country,
         };
+        if (!originalEvent?.locationName && result.locationName) {
+          updateData.locationName = result.locationName;
+        }
 
         // Update severity if LLM provided one
         if (result.severity) {
