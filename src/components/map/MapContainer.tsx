@@ -613,7 +613,8 @@ export default function MapContainer() {
               ['==', ['get', 'severity'], 'moderate'], 0.35,
               ['==', ['get', 'severity'], 'info'], 0.25,
               ['==', ['get', 'severity'], 'cleared'], 0.2,
-              0.04,
+              // Inactive polygons: invisible at low zoom, faint at high zoom
+              ['interpolate', ['linear'], ['zoom'], 7, 0, 8, 0.02],
             ] as unknown as maplibregl.ExpressionSpecification,
           },
         },
@@ -636,7 +637,7 @@ export default function MapContainer() {
             ] as unknown as maplibregl.ExpressionSpecification,
             'line-width': [
               'case',
-              ['==', ['get', 'severity'], 'none'], 0.8,
+              ['==', ['get', 'severity'], 'none'], 0.5,
               2.5,
             ] as unknown as maplibregl.ExpressionSpecification,
             'line-opacity': [
@@ -645,7 +646,8 @@ export default function MapContainer() {
               ['==', ['get', 'severity'], 'moderate'], 0.7,
               ['==', ['get', 'severity'], 'info'], 0.5,
               ['==', ['get', 'severity'], 'cleared'], 0.4,
-              0.2,
+              // Inactive: hidden at low zoom, faint outline at high zoom
+              ['interpolate', ['linear'], ['zoom'], 7, 0, 8, 0.1],
             ] as unknown as maplibregl.ExpressionSpecification,
           },
         },
