@@ -17,7 +17,7 @@ import { Delaunay } from 'd3-delaunay';
 const POLYGONS_URL = 'https://oref-map.pages.dev/locations_polygons.json';
 const POINTS_URL = 'https://raw.githubusercontent.com/maorcc/oref-map/main/web/oref_points.json';
 
-const OUTPUT_PATH = path.join(__dirname, '..', 'src', 'lib', 'geo', 'city-polygons.geojson');
+const OUTPUT_PATH = path.join(__dirname, '..', 'src', 'lib', 'geo', 'city-polygons.json');
 const DISTRICTS_PATH = path.join(__dirname, '..', 'src', 'lib', 'geo', 'districts.json');
 
 /** Swap [lat, lng] to [lng, lat] (oref_points.json uses lat-first). */

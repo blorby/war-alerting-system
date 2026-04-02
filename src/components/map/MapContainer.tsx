@@ -7,7 +7,7 @@ import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/geo/regions";
 import { useAppStore, selectFilteredEvents } from "@/lib/store";
 import { EVENT_TYPES } from "@/lib/constants";
 import districtsData from '@/lib/geo/districts.json';
-import polygonsData from '@/lib/geo/district-polygons.json';
+import cityPolygonsData from '@/lib/geo/city-polygons.json';
 import MapFocus from "./MapFocus";
 import MapLayers from "./MapLayers";
 import MapLegend from "./MapLegend";
@@ -195,65 +195,49 @@ export default function MapContainer() {
     [events],
   );
 
-  const areaAlertStatus = useMemo(() => {
-    const districts = districtsData as Record<string, { areaid: number; lat: number; lng: number }>;
-    const statusMap = new Map<number, string>();
+  const cityAlertStatus = useMemo(() => {
+    const districts = districtsData as Record<string, { areaid: number }>;
+    const statusMap = new Map<string, string>();   // cityName → severity
+    const areaFallback = new Map<number, string>(); // areaid → severity (for unmatched polygons)
     const severityRank: Record<string, number> = { critical: 3, moderate: 2, info: 1, cleared: 0 };
 
-    // Build reverse lookup: areaid → center coords (for fallback matching by proximity)
-    const areaCenters = new Map<number, { lat: number; lng: number }>();
-    for (const d of Object.values(districts)) {
-      if (d.areaid && !areaCenters.has(d.areaid)) {
-        areaCenters.set(d.areaid, { lat: d.lat, lng: d.lng });
-      }
-    }
-
-    // Find nearest areaid by lat/lng (within ~15km threshold)
-    function findNearestArea(lat: number, lng: number): number | null {
-      let bestId: number | null = null;
-      let bestDist = 0.15; // ~15km threshold in degrees
-      for (const [areaid, center] of areaCenters) {
-        const dlat = lat - center.lat;
-        const dlng = lng - center.lng;
-        const dist = Math.sqrt(dlat * dlat + dlng * dlng);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestId = areaid;
-        }
-      }
-      return bestId;
-    }
-
-    // Security-relevant event types that should trigger polygon highlighting
     const securityTypes = new Set(['alert', 'strike', 'missile', 'thermal']);
 
     for (const e of allStoreEvents) {
       if (!securityTypes.has(e.type)) continue;
 
-      // Try exact Hebrew name match first
-      let areaid: number | undefined;
-      if (e.locationName) {
-        areaid = districts[e.locationName]?.areaid;
-      }
+      const name = e.locationName;
+      if (!name) continue;
 
-      // Fallback: match by lat/lng proximity
-      if (!areaid && e.lat != null && e.lng != null) {
-        areaid = findNearestArea(e.lat, e.lng) ?? undefined;
-      }
-
-      if (!areaid) continue;
-
-      const current = statusMap.get(areaid);
-      const currentRank = current ? (severityRank[current] ?? 0) : -1;
       const newRank = severityRank[e.severity] ?? 0;
 
-      if (e.isActive && newRank > currentRank) {
-        statusMap.set(areaid, e.severity);
-      } else if (!e.isActive && !statusMap.has(areaid)) {
-        statusMap.set(areaid, 'cleared');
+      // Direct city name match
+      if (e.isActive) {
+        const current = statusMap.get(name);
+        const currentRank = current ? (severityRank[current] ?? 0) : -1;
+        if (newRank > currentRank) {
+          statusMap.set(name, e.severity);
+        }
+      } else if (!statusMap.has(name)) {
+        statusMap.set(name, 'cleared');
+      }
+
+      // Also track areaid for fallback
+      const areaid = districts[name]?.areaid;
+      if (areaid) {
+        if (e.isActive) {
+          const currentArea = areaFallback.get(areaid);
+          const currentAreaRank = currentArea ? (severityRank[currentArea] ?? 0) : -1;
+          if (newRank > currentAreaRank) {
+            areaFallback.set(areaid, e.severity);
+          }
+        } else if (!areaFallback.has(areaid)) {
+          areaFallback.set(areaid, 'cleared');
+        }
       }
     }
-    return statusMap;
+
+    return { statusMap, areaFallback };
   }, [allStoreEvents]);
 
   const trajectoryGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
@@ -573,19 +557,27 @@ export default function MapContainer() {
 
   // --- Alert zone polygons (static import, no async fetch) ---
   const polygonGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
-    const base = polygonsData as unknown as GeoJSON.FeatureCollection;
+    const base = cityPolygonsData as unknown as GeoJSON.FeatureCollection;
+    const { statusMap, areaFallback } = cityAlertStatus;
     return {
       type: 'FeatureCollection',
       features: base.features.map((feature) => {
-        const areaid = (feature.properties as Record<string, unknown>)?.areaid as number;
-        const severity = areaAlertStatus.get(areaid) ?? 'none';
+        const props = feature.properties as Record<string, unknown>;
+        const name = props?.name as string;
+        const areaid = props?.areaid as number | null;
+
+        // Try direct city name match first, then areaid fallback
+        const severity = statusMap.get(name)
+          ?? (areaid ? areaFallback.get(areaid) : undefined)
+          ?? 'none';
+
         return {
           ...feature,
-          properties: { ...feature.properties, severity },
+          properties: { ...props, severity },
         };
       }),
     };
-  }, [areaAlertStatus]);
+  }, [cityAlertStatus]);
 
   useEffect(() => {
     const map = mapRef.current;
