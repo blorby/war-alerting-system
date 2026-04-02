@@ -1,3 +1,5 @@
+import sanitizeHtml from 'sanitize-html';
+
 export interface TelegramMessage {
   messageId: number;
   timestamp: Date;
@@ -6,10 +8,13 @@ export interface TelegramMessage {
 }
 
 function stripHtml(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .trim();
+  const withNewlines = html.replace(/<br\s*\/?>/gi, '\n');
+  const sanitized = sanitizeHtml(withNewlines, {
+    allowedTags: [],
+    allowedAttributes: {},
+    textFilter: (text) => text,
+  });
+  return sanitized.trim();
 }
 
 export function parseMessages(html: string, channel: string): TelegramMessage[] {
