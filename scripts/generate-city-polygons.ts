@@ -131,5 +131,72 @@ export async function fetchJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// Voronoi generation is added in Task 3.
-// Main execution is added in Task 4.
+async function main() {
+  console.log('Fetching oref-map polygon data...');
+  const polygonsData = await fetchJson<Record<string, [number, number][]>>(POLYGONS_URL);
+  const polygonKeys = Object.keys(polygonsData).filter((k) => !k.startsWith('_'));
+  console.log(`  Got ${polygonKeys.length} polygon entries`);
+
+  console.log('Fetching oref-map point data...');
+  const pointsRaw = await fetchJson<Record<string, [number, number]>>(POINTS_URL);
+  const pointCount = Object.keys(pointsRaw).length;
+  console.log(`  Got ${pointCount} point entries`);
+
+  // Points are [lat, lng] — swap to [lng, lat] for GeoJSON
+  const points: Record<string, [number, number]> = {};
+  for (const [name, coord] of Object.entries(pointsRaw)) {
+    points[name] = swapLatLng(coord);
+  }
+
+  console.log('Loading districts.json...');
+  const districts: Record<string, { lat: number; lng: number; areaname: string; migun_time: number; areaid: number }> =
+    JSON.parse(fs.readFileSync(DISTRICTS_PATH, 'utf-8'));
+
+  // Step 1: Convert oref-map polygons
+  console.log('Converting oref-map polygons...');
+  const orefMapFeatures = convertOrefMapPolygons(polygonsData, districts);
+  console.log(`  Converted ${orefMapFeatures.length} polygon features`);
+
+  // Step 2: Generate Voronoi for gaps
+  const existingNames = new Set(orefMapFeatures.map((f) => f.properties!.name as string));
+  console.log('Generating Voronoi cells for remaining points...');
+  const voronoiFeatures = generateVoronoiFeatures(points, existingNames, districts);
+  console.log(`  Generated ${voronoiFeatures.length} Voronoi features`);
+
+  // Step 3: Merge and write GeoJSON
+  const allFeatures = [...orefMapFeatures, ...voronoiFeatures];
+  const featureCollection: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: allFeatures,
+  };
+
+  fs.writeFileSync(OUTPUT_PATH, JSON.stringify(featureCollection, null, 2), 'utf-8');
+  console.log(`Wrote ${OUTPUT_PATH} (${allFeatures.length} features)`);
+
+  // Step 4: Update districts.json coordinates from oref_points.json
+  let updated = 0;
+  for (const [name, entry] of Object.entries(districts)) {
+    const point = points[name];
+    if (point) {
+      entry.lng = point[0];
+      entry.lat = point[1];
+      updated++;
+    }
+  }
+
+  fs.writeFileSync(DISTRICTS_PATH, JSON.stringify(districts, null, 2), 'utf-8');
+  console.log(`Updated ${updated}/${Object.keys(districts).length} district coordinates`);
+
+  console.log('Done.');
+}
+
+// Only run main when executed directly (not imported for tests)
+const isDirectRun = process.argv[1]?.endsWith('generate-city-polygons.ts')
+  || process.argv[1]?.endsWith('generate-city-polygons.js');
+
+if (isDirectRun) {
+  main().catch((err) => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
+}
