@@ -7,6 +7,7 @@ import { RSS_FEEDS, RssFeedConfig } from './lib/rss-config';
 import { rssDedupHash } from './lib/rss-dedup';
 import { NewEvent } from './lib/base-collector';
 import { geocodeText } from './lib/geocode';
+import { needsProxy, proxyFetch } from './lib/ssh-fetch';
 
 const INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const FEED_TIMEOUT_MS = 15_000;
@@ -104,11 +105,18 @@ function itemToEvent(item: Parser.Item, feedConfig: RssFeedConfig): NewEvent {
 }
 
 async function processFeed(feedConfig: RssFeedConfig): Promise<{ fetched: number; inserted: number }> {
-  // Use manual fetch + iconv for Hebrew feeds that may use Windows-1255
+  // Use SSH proxy for geo-blocked feeds, or manual fetch + iconv for Hebrew feeds
+  const isProxied = needsProxy(feedConfig.url);
   const needsEncoding = feedConfig.language === 'he';
-  const feed = needsEncoding
-    ? await parser.parseString(await fetchFeedAsUtf8(feedConfig.url))
-    : await parser.parseURL(feedConfig.url);
+  let feed;
+  if (isProxied) {
+    const xml = await proxyFetch(feedConfig.url, { 'User-Agent': 'war-alerting-system/0.1 (rss-feeds)' }, FEED_TIMEOUT_MS);
+    feed = await parser.parseString(xml);
+  } else if (needsEncoding) {
+    feed = await parser.parseString(await fetchFeedAsUtf8(feedConfig.url));
+  } else {
+    feed = await parser.parseURL(feedConfig.url);
+  }
   let inserted = 0;
 
   for (const item of feed.items) {

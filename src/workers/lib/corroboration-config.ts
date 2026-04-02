@@ -40,6 +40,9 @@ export const SOURCE_CATEGORIES: Record<string, string> = {
   // Hebrew news aggregators
   'rotter': 'news',
   'ynet-news': 'news',
+  'c14': 'news',
+  // Official government
+  'gov-il': 'official',
 };
 
 export const INTERVAL_MS = 2 * 60_000; // 2 minutes

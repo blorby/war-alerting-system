@@ -10,6 +10,7 @@ const PROXIED_HOSTS = new Set([
   'www.oref.org.il',
   'alerts-history.oref.org.il',
   'www.inss.org.il',
+  'www.c14.co.il',
 ]);
 
 /** Returns true if the URL must be routed through the SSH proxy. */

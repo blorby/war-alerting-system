@@ -33,4 +33,7 @@ export const RSS_FEEDS: RssFeedConfig[] = [
   // Hebrew news aggregators
   { url: 'http://rotter.net/rss/rotternews.xml', name: 'Rotter News', source: 'rotter', category: 'israeli_news', language: 'he' },
   { url: 'https://www.ynet.co.il/Integration/StoryRss2.xml', name: 'Ynet News', source: 'ynet-news', category: 'israeli_news', language: 'he' },
+  { url: 'https://www.c14.co.il/feed/', name: 'Channel 14 News', source: 'c14', category: 'israeli_news', language: 'he' },
+  // Israeli government news (via Google News, gov.il blocks direct access)
+  { url: 'https://news.google.com/rss/search?q=site:gov.il+news&hl=he&gl=IL&ceid=IL:he', name: 'Gov.il News (via Google News)', source: 'gov-il', category: 'official_statement', language: 'he' },
 ];
