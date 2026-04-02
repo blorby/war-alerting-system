@@ -1,17 +1,19 @@
 "use client";
 
 import { useAppStore } from "@/lib/store";
+import { useT } from "@/lib/i18n/useT";
 
 const FRONTS = [
-  { value: "all", label: "All" },
-  { value: "iran", label: "Iran" },
-  { value: "gaza", label: "Gaza" },
-  { value: "lebanon", label: "Lebanon" },
-  { value: "west_bank", label: "West Bank" },
-  { value: "internal", label: "Internal" },
+  { value: "all", key: "filters.all" },
+  { value: "iran", key: "filters.front.iran" },
+  { value: "gaza", key: "filters.front.gaza" },
+  { value: "lebanon", key: "filters.front.lebanon" },
+  { value: "west_bank", key: "filters.front.west_bank" },
+  { value: "internal", key: "filters.front.internal" },
 ] as const;
 
 export default function FrontFilter() {
+  const t = useT();
   const activeFront = useAppStore((s) => s.activeFront);
   const setFront = useAppStore((s) => s.setFront);
 
@@ -27,7 +29,7 @@ export default function FrontFilter() {
               : "text-muted hover:text-foreground"
           }`}
         >
-          {front.label}
+          {t(front.key)}
         </button>
       ))}
     </div>

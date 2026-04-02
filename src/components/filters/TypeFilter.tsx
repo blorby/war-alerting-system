@@ -2,8 +2,10 @@
 
 import { useAppStore } from "@/lib/store";
 import { EVENT_TYPES } from "@/lib/constants";
+import { useT } from "@/lib/i18n/useT";
 
 export default function TypeFilter() {
+  const t = useT();
   const activeType = useAppStore((s) => s.activeType);
   const setType = useAppStore((s) => s.setType);
 
@@ -17,7 +19,7 @@ export default function TypeFilter() {
             : "text-muted hover:text-foreground"
         }`}
       >
-        All
+        {t("filters.all")}
       </button>
       {EVENT_TYPES.map((et) => (
         <button

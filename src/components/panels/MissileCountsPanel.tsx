@@ -1,10 +1,13 @@
 'use client';
 
 import { useAppStore } from '@/lib/store';
+import { useT, useLocale } from '@/lib/i18n/useT';
 import PanelContainer from './PanelContainer';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function MissileCountsPanel() {
+  const t = useT();
+  const locale = useLocale();
   const missileCounts = useAppStore((s) => s.missileCounts);
 
   const icon = (
@@ -22,9 +25,9 @@ export default function MissileCountsPanel() {
     : [];
 
   return (
-    <PanelContainer title="Attack Waves" icon={icon}>
+    <PanelContainer title={t('panels.attackWaves')} icon={icon}>
       {!missileCounts ? (
-        <p className="text-muted text-center py-4">No missile data</p>
+        <p className="text-muted text-center py-4">{t('panels.noMissile')}</p>
       ) : (
         <div>
           <div className="h-36">
@@ -51,17 +54,17 @@ export default function MissileCountsPanel() {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: '10px' }} />
-                <Bar dataKey="missiles" fill="#ef4444" name="Missiles" />
-                <Bar dataKey="uavs" fill="#f97316" name="UAVs" />
+                <Bar dataKey="missiles" fill="#ef4444" name={t('panels.missiles')} />
+                <Bar dataKey="uavs" fill="#f97316" name={t('panels.uavs')} />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="flex items-center justify-between text-muted mt-1">
             <span>
-              <span className="text-red-400 font-medium">{missileCounts.totalMissiles}</span> missile waves,{' '}
-              <span className="text-orange-400 font-medium">{missileCounts.totalUavs}</span> UAV waves
+              <span className="text-red-400 font-medium">{missileCounts.totalMissiles}</span> {t('panels.missileWaves')},{' '}
+              <span className="text-orange-400 font-medium">{missileCounts.totalUavs}</span> {t('panels.uavWaves')}
             </span>
-            <span className="text-[10px]">Since {new Date(missileCounts.since).toLocaleDateString()}</span>
+            <span className="text-[10px]">{t('panels.since', { date: new Date(missileCounts.since).toLocaleDateString(locale === 'he' ? 'he-IL' : 'en-US') })}</span>
           </div>
         </div>
       )}

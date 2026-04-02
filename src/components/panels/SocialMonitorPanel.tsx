@@ -1,17 +1,8 @@
 'use client';
 
 import { useAppStore } from '@/lib/store';
+import { useT } from '@/lib/i18n/useT';
 import PanelContainer from './PanelContainer';
-
-const timeAgo = (ts: string) => {
-  const diff = Date.now() - new Date(ts).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} minutes ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `about ${hrs} hours ago`;
-  return `${Math.floor(hrs / 24)} days ago`;
-};
 
 function PlatformIcon({ platform }: { platform: string }) {
   const p = platform.toLowerCase();
@@ -37,6 +28,7 @@ function PlatformIcon({ platform }: { platform: string }) {
 }
 
 export default function SocialMonitorPanel() {
+  const t = useT();
   const socialPosts = useAppStore((s) => s.socialPosts);
 
   const icon = (
@@ -46,10 +38,10 @@ export default function SocialMonitorPanel() {
   );
 
   return (
-    <PanelContainer title="Social Monitor" icon={icon}>
+    <PanelContainer title={t('panels.socialMonitor')} icon={icon}>
       <div className="space-y-2">
         {socialPosts.length === 0 && (
-          <p className="text-muted text-center py-4">No social posts</p>
+          <p className="text-muted text-center py-4">{t('panels.noSocial')}</p>
         )}
         {socialPosts.map((post) => (
           <div key={post.id} className="border-b border-border pb-1.5 last:border-0">
@@ -70,14 +62,14 @@ export default function SocialMonitorPanel() {
                     : 'bg-yellow-500/20 text-yellow-400'
                 }`}
               >
-                {post.verified ? 'Verified' : 'Unverified'}
+                {post.verified ? t('panels.verified') : t('panels.unverified')}
               </span>
             </div>
             <p className="text-foreground leading-tight line-clamp-2">{post.text}</p>
             <div className="flex items-center justify-between mt-0.5 text-muted">
-              <span>{timeAgo(post.timestamp)}</span>
+              <span>{timeAgo(post.timestamp, t)}</span>
               <div className="flex items-center gap-2">
-                <span className="text-[10px]">{post.credibility}% credibility</span>
+                <span className="text-[10px]">{post.credibility}% {t('panels.credibility')}</span>
                 {post.messageUrl && (
                   <a
                     href={post.messageUrl}
@@ -85,7 +77,7 @@ export default function SocialMonitorPanel() {
                     rel="noopener noreferrer"
                     className="text-info hover:underline text-[10px]"
                   >
-                    Source
+                    {t('panels.source')}
                   </a>
                 )}
               </div>
@@ -95,4 +87,14 @@ export default function SocialMonitorPanel() {
       </div>
     </PanelContainer>
   );
+}
+
+function timeAgo(ts: string, t: (key: string, params?: Record<string, string | number>) => string): string {
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return t('time.justNow');
+  if (mins < 60) return t('time.minutesLong', { n: mins });
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return t('time.hoursLong', { n: hrs });
+  return t('time.daysLong', { n: Math.floor(hrs / 24) });
 }

@@ -2,17 +2,13 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
+import { useT, useLocale } from "@/lib/i18n/useT";
 import KeyboardShortcuts from "@/components/layout/KeyboardShortcuts";
 
 const TIME_RANGES = ["24h", "48h", "7d", "30d", "All"] as const;
 type TimeRange = (typeof TIME_RANGES)[number];
 
 const LIVE_WINDOWS = ["15m", "1h", "3h"] as const;
-const LIVE_WINDOW_LABELS: Record<string, string> = {
-  "15m": "15 min",
-  "1h": "1 hour",
-  "3h": "3 hours",
-};
 
 const BUCKET_COUNT = 48;
 const SPEEDS = [1, 2, 5, 10];
@@ -51,6 +47,9 @@ interface TimelineBarProps {
 export default function TimelineBar({
   isLive: _isLiveProp = true,
 }: TimelineBarProps) {
+  const t = useT();
+  const locale = useLocale();
+  const dateLocale = locale === "he" ? "he-IL" : "en-US";
   const [now, setNow] = useState<Date>(() => new Date());
   const [mobileExpanded, setMobileExpanded] = useState(false);
 
@@ -206,7 +205,7 @@ export default function TimelineBar({
         {/* Playback controls */}
         <button
           className="rounded p-1 text-muted hover:text-foreground"
-          aria-label="Skip back"
+          aria-label={t("timeline.skipBack")}
           onClick={() => {
             const stepMs = getRangeMs(selectedRange) ? (getRangeMs(selectedRange)! / BUCKET_COUNT) : 3600000;
             stepBackward(stepMs);
@@ -218,7 +217,7 @@ export default function TimelineBar({
         </button>
         <button
           className="rounded p-1 text-muted hover:text-foreground"
-          aria-label={isPlaying ? "Pause" : "Play"}
+          aria-label={isPlaying ? t("timeline.pause") : t("timeline.play")}
           onClick={() => {
             if (playbackTime === null) {
               const rangeMs = getRangeMs(selectedRange) ?? 24 * 60 * 60 * 1000;
@@ -239,7 +238,7 @@ export default function TimelineBar({
         </button>
         <button
           className="rounded p-1 text-muted hover:text-foreground"
-          aria-label="Skip forward"
+          aria-label={t("timeline.skipForward")}
           onClick={() => {
             const stepMs = getRangeMs(selectedRange) ? (getRangeMs(selectedRange)! / BUCKET_COUNT) : 3600000;
             stepForward(stepMs);
@@ -259,19 +258,19 @@ export default function TimelineBar({
           }`}
           onClick={() => { goLive(); setLiveWindow(null); }}
         >
-          LIVE
+          {t("timeline.live")}
         </button>
 
         {/* Time */}
         <span className={`text-[10px] ${playbackTime ? "text-warning" : "text-muted"} ml-auto`} suppressHydrationWarning>
-          {displayTime.toLocaleTimeString("en-US", { hour12: false })}
+          {displayTime.toLocaleTimeString(dateLocale, { hour12: false })}
         </span>
 
         {/* Expand toggle */}
         <button
           onClick={() => setMobileExpanded(!mobileExpanded)}
           className="p-1 text-muted hover:text-foreground"
-          aria-label={mobileExpanded ? "Collapse timeline" : "Expand timeline"}
+          aria-label={mobileExpanded ? t("timeline.collapse") : t("timeline.expand")}
         >
           <svg className={`h-3.5 w-3.5 transition-transform ${mobileExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
@@ -285,7 +284,7 @@ export default function TimelineBar({
           {/* Live window filter */}
           {playbackTime === null && (
             <div className="flex items-center gap-1 mb-1">
-              <span className="text-[10px] text-muted mr-1">Window:</span>
+              <span className="text-[10px] text-muted mr-1">{t("timeline.window")}</span>
               {LIVE_WINDOWS.map((w) => (
                 <button
                   key={w}
@@ -296,7 +295,7 @@ export default function TimelineBar({
                       : "text-muted hover:text-foreground"
                   }`}
                 >
-                  {LIVE_WINDOW_LABELS[w]}
+                  {t(`timeline.liveWindow.${w}`)}
                 </button>
               ))}
             </div>
@@ -305,7 +304,7 @@ export default function TimelineBar({
           {/* Speed + time range */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-0.5">
-              <span className="text-[10px] text-muted">Speed:</span>
+              <span className="text-[10px] text-muted">{t("timeline.speed")}</span>
               {SPEEDS.map((s) => (
                 <button
                   key={s}
@@ -358,7 +357,7 @@ export default function TimelineBar({
         <div className="flex items-center gap-1">
           <button
             className="rounded p-1 text-muted hover:text-foreground transition-colors"
-            aria-label="Skip back"
+            aria-label={t("timeline.skipBack")}
             onClick={() => {
               const stepMs = getRangeMs(selectedRange) ? (getRangeMs(selectedRange)! / BUCKET_COUNT) : 3600000;
               stepBackward(stepMs);
@@ -370,7 +369,7 @@ export default function TimelineBar({
           </button>
           <button
             className="rounded p-1 text-muted hover:text-foreground transition-colors"
-            aria-label={isPlaying ? "Pause" : "Play"}
+            aria-label={isPlaying ? t("timeline.pause") : t("timeline.play")}
             onClick={() => {
               if (playbackTime === null) {
                 const rangeMs = getRangeMs(selectedRange) ?? 24 * 60 * 60 * 1000;
@@ -391,7 +390,7 @@ export default function TimelineBar({
           </button>
           <button
             className="rounded p-1 text-muted hover:text-foreground transition-colors"
-            aria-label="Skip forward"
+            aria-label={t("timeline.skipForward")}
             onClick={() => {
               const stepMs = getRangeMs(selectedRange) ? (getRangeMs(selectedRange)! / BUCKET_COUNT) : 3600000;
               stepForward(stepMs);
@@ -415,7 +414,7 @@ export default function TimelineBar({
             setLiveWindow(null);
           }}
         >
-          {"\u00AB"} LIVE
+          {"\u00AB"} {t("timeline.live")}
         </button>
 
         {/* Live window filter — only in live mode */}
@@ -431,7 +430,7 @@ export default function TimelineBar({
                     : "text-muted hover:text-foreground"
                 }`}
               >
-                {LIVE_WINDOW_LABELS[w]}
+                {t(`timeline.liveWindow.${w}`)}
               </button>
             ))}
           </div>
@@ -441,7 +440,7 @@ export default function TimelineBar({
         <div className="flex items-center gap-0.5">
           <button
             className="text-muted hover:text-foreground transition-colors"
-            aria-label="Speed down"
+            aria-label={t("timeline.speedDown")}
             onClick={() => {
               const idx = SPEEDS.indexOf(playbackSpeed);
               if (idx > 0) setPlaybackSpeed(SPEEDS[idx - 1]);
@@ -454,7 +453,7 @@ export default function TimelineBar({
           <span className="text-xs text-muted min-w-[1.5rem] text-center">{playbackSpeed}x</span>
           <button
             className="text-muted hover:text-foreground transition-colors"
-            aria-label="Speed up"
+            aria-label={t("timeline.speedUp")}
             onClick={() => {
               const idx = SPEEDS.indexOf(playbackSpeed);
               if (idx < SPEEDS.length - 1) setPlaybackSpeed(SPEEDS[idx + 1]);
@@ -469,8 +468,8 @@ export default function TimelineBar({
         {/* Current time */}
         <span className={`text-xs ${playbackTime ? "text-warning font-medium" : "text-muted"}`} suppressHydrationWarning>
           {playbackTime ? "\u23F1 " : ""}
-          {displayTime.toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
-          {displayTime.toLocaleTimeString("en-US", { hour12: false })}
+          {displayTime.toLocaleDateString(dateLocale, { month: "short", day: "numeric" })}{" "}
+          {displayTime.toLocaleTimeString(dateLocale, { hour12: false })}
         </span>
 
         {/* Time range buttons */}
@@ -491,9 +490,9 @@ export default function TimelineBar({
           <button
             onClick={() => setShowShortcuts(true)}
             className="px-1.5 py-0.5 text-[10px] text-muted hover:text-foreground border border-border rounded transition-colors"
-            title="Keyboard shortcuts"
+            title={t("shortcuts.title")}
           >
-            ? Keys
+            {t("timeline.shortcutsBtn")}
           </button>
         </div>
       </div>
@@ -522,8 +521,8 @@ export default function TimelineBar({
 
       {/* Threat Level row (desktop only) */}
       <div className="hidden md:flex items-center gap-4 border-t border-border/50 px-4 py-1">
-        <span className="text-[10px] font-bold tracking-wider text-muted uppercase leading-tight">
-          THREAT<br />LEVEL
+        <span className="text-[10px] font-bold tracking-wider text-muted uppercase leading-tight whitespace-pre-line">
+          {t("timeline.threatLevel")}
         </span>
 
         {sparklinePath && (
@@ -535,28 +534,28 @@ export default function TimelineBar({
         {threat && (
           <>
             <span className={`text-xs font-bold ${trendColors[overallTrend]}`}>
-              {trendArrows[overallTrend]} {overallTrend.toUpperCase()}
+              {trendArrows[overallTrend]} {t(`threatPanel.${overallTrend}`)}
             </span>
             {lastUpdate && (
               <span className="text-[10px] text-muted">
-                {formatTimeAgo(lastUpdate)}
+                {formatTimeAgo(lastUpdate, t)}
               </span>
             )}
           </>
         )}
         {!threat && (
-          <span className="text-[10px] text-muted">Awaiting assessment...</span>
+          <span className="text-[10px] text-muted">{t("threatPanel.awaiting")}</span>
         )}
       </div>
     </div>
   );
 }
 
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(date: Date, t: (key: string, params?: Record<string, string | number>) => string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "less than a minute ago";
+  if (seconds < 60) return t("time.lessThanMinute");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t("time.minutesAgo", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
+  return t("time.hoursAgo", { n: hours });
 }

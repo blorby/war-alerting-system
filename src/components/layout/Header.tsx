@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppStore } from "@/lib/store";
+import { useT, useLocale, useSetLocale } from "@/lib/i18n/useT";
 
 interface HeaderProps {
   isLive?: boolean;
@@ -15,12 +16,12 @@ function getThreatColor(score: number): string {
   return "text-cleared";
 }
 
-function getThreatLabel(score: number): string {
-  if (score >= 8) return "CRITICAL";
-  if (score >= 6) return "HIGH";
-  if (score >= 4) return "ELEVATED";
-  if (score >= 2) return "GUARDED";
-  return "LOW";
+function getThreatLabelKey(score: number): string {
+  if (score >= 8) return "threatLevel.critical";
+  if (score >= 6) return "threatLevel.high";
+  if (score >= 4) return "threatLevel.elevated";
+  if (score >= 2) return "threatLevel.guarded";
+  return "threatLevel.low";
 }
 
 export default function Header({
@@ -28,9 +29,12 @@ export default function Header({
   lastUpdate,
   onMenuToggle,
 }: HeaderProps) {
+  const t = useT();
+  const locale = useLocale();
+  const setLocale = useSetLocale();
   const threat = useAppStore((s) => s.threat);
   const score = threat?.overallScore ?? 0;
-  const label = getThreatLabel(score);
+  const label = t(getThreatLabelKey(score));
   const color = getThreatColor(score);
 
   const getConnectionColor = () => {
@@ -49,7 +53,7 @@ export default function Header({
           <button
             onClick={onMenuToggle}
             className="md:hidden shrink-0 p-1 text-muted hover:text-foreground"
-            aria-label="Menu"
+            aria-label={t("header.menu")}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -71,14 +75,14 @@ export default function Header({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
             </span>
-            <span className="text-xs font-medium text-green-500">LIVE</span>
+            <span className="text-xs font-medium text-green-500">{t("header.live")}</span>
           </div>
         )}
 
         {threat !== null && (
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
             <span className={`text-xs font-bold ${color}`}>
-              <span className="hidden sm:inline">THREAT: </span>{label}
+              <span className="hidden sm:inline">{t("header.threat")} </span>{label}
             </span>
             <span
               className={`rounded px-1 md:px-1.5 py-0.5 text-xs font-bold ${color} bg-surface-elevated`}
@@ -92,7 +96,7 @@ export default function Header({
           <div className="hidden sm:flex items-center gap-1.5">
             <span className={`h-1.5 w-1.5 rounded-full ${getConnectionColor()}`} />
             <span className="text-xs text-muted">
-              upd {formatTimeAgo(lastUpdate)}
+              {t("header.updatedAgo", { time: formatTimeAgo(lastUpdate, t) })}
             </span>
           </div>
         )}
@@ -100,36 +104,35 @@ export default function Header({
 
       <div className="hidden sm:flex items-center gap-2">
         <button
-          disabled
-          title="Coming soon"
-          className="cursor-not-allowed rounded px-2 py-1 text-xs text-muted opacity-50"
+          onClick={() => setLocale(locale === "he" ? "en" : "he")}
+          className="rounded px-2 py-1 text-xs text-muted hover:text-foreground transition-colors"
         >
-          EN
+          {locale === "he" ? "EN" : "עב"}
         </button>
         <button className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs text-muted hover:text-foreground transition-colors">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
-          Suggest Source
+          {t("header.suggestSource")}
         </button>
         <button className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs text-muted hover:text-foreground transition-colors">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
-          Edit
+          {t("header.edit")}
         </button>
       </div>
     </header>
   );
 }
 
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(date: Date, t: (key: string, params?: Record<string, string | number>) => string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "less than a minute ago";
+  if (seconds < 60) return t("time.lessThanMinute");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t("time.minutesAgo", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
+  return t("time.hoursAgo", { n: hours });
 }

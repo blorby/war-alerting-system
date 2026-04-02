@@ -1,15 +1,17 @@
 "use client";
 
 import { useAppStore, selectFilteredEvents } from "@/lib/store";
+import { useT } from "@/lib/i18n/useT";
 
 const severityConfig = {
-  critical: { label: "CRITICAL", color: "text-critical", bg: "bg-critical/10", dot: "bg-critical" },
-  moderate: { label: "MODERATE", color: "text-moderate", bg: "bg-moderate/10", dot: "bg-moderate" },
-  info: { label: "INFO", color: "text-info", bg: "bg-info/10", dot: "bg-info" },
-  cleared: { label: "CLEARED", color: "text-cleared", bg: "bg-cleared/10", dot: "bg-cleared" },
+  critical: { key: "alertFeed.critical", color: "text-critical", bg: "bg-critical/10", dot: "bg-critical" },
+  moderate: { key: "alertFeed.moderate", color: "text-moderate", bg: "bg-moderate/10", dot: "bg-moderate" },
+  info: { key: "alertFeed.info", color: "text-info", bg: "bg-info/10", dot: "bg-info" },
+  cleared: { key: "alertFeed.cleared", color: "text-cleared", bg: "bg-cleared/10", dot: "bg-cleared" },
 };
 
 export default function AlertFeed() {
+  const t = useT();
   const events = useAppStore(selectFilteredEvents);
   const soundEnabled = useAppStore((s) => s.soundEnabled);
   const toggleSound = useAppStore((s) => s.toggleSound);
@@ -22,7 +24,7 @@ export default function AlertFeed() {
         <svg className="h-4 w-4 text-critical" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
         </svg>
-        <span className="text-xs font-bold tracking-wide">ALERT FEED</span>
+        <span className="text-xs font-bold tracking-wide">{t("alertFeed.title")}</span>
         {criticalCount > 0 && (
           <span className="rounded-full bg-critical/20 px-2 py-0.5 text-xs font-bold text-critical">
             {criticalCount}
@@ -31,7 +33,7 @@ export default function AlertFeed() {
         <button
           onClick={toggleSound}
           className={`p-1 rounded transition-colors ${soundEnabled ? 'text-info' : 'text-muted hover:text-foreground'}`}
-          title={soundEnabled ? 'Disable alert sounds' : 'Enable alert sounds'}
+          title={soundEnabled ? t('alertFeed.soundOn') : t('alertFeed.soundOff')}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             {soundEnabled ? (
@@ -54,7 +56,7 @@ export default function AlertFeed() {
       <div className="flex-1 overflow-y-auto">
         {activeAlerts.length === 0 ? (
           <div className="px-3 py-4 text-center text-xs text-muted">
-            No active alerts at this time
+            {t("alertFeed.empty")}
           </div>
         ) : (
           activeAlerts.map((alert) => {
@@ -67,15 +69,15 @@ export default function AlertFeed() {
                 <div className="flex items-center gap-2">
                   <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
                   <span className={`text-xs font-bold ${config.color}`}>
-                    {config.label}
+                    {t(config.key)}
                   </span>
                   {alert.corroborated ? (
-                    <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-green-500/20 text-green-400" title="Confirmed by multiple independent sources">CONFIRMED</span>
+                    <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-green-500/20 text-green-400" title={t("alertFeed.confirmed")}>{t("alertFeed.confirmed")}</span>
                   ) : (
-                    <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-yellow-500/20 text-yellow-400" title="Single source only — less reliable">SINGLE SRC</span>
+                    <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-yellow-500/20 text-yellow-400" title={t("alertFeed.singleSrc")}>{t("alertFeed.singleSrc")}</span>
                   )}
                   <span className="text-xs text-muted">
-                    {formatTimeAgo(new Date(alert.timestamp))}
+                    {formatTimeAgo(new Date(alert.timestamp), t)}
                   </span>
                 </div>
                 <p className="mt-1 text-sm font-medium">{alert.title}</p>
@@ -93,11 +95,11 @@ export default function AlertFeed() {
   );
 }
 
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(date: Date, t: (key: string, params?: Record<string, string | number>) => string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "less than a minute ago";
+  if (seconds < 60) return t("time.lessThanMinute");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t("time.minutesAgo", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
+  return t("time.hoursAgo", { n: hours });
 }

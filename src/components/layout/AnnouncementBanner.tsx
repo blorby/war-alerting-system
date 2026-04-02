@@ -2,8 +2,10 @@
 
 import { useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
+import { useT } from '@/lib/i18n/useT';
 
 export default function AnnouncementBanner() {
+  const t = useT();
   const announcement = useAppStore((s) => s.announcement);
   const dismissed = useAppStore((s) => s.announcementDismissed);
   const fetchAnnouncement = useAppStore((s) => s.fetchAnnouncement);
@@ -23,7 +25,7 @@ export default function AnnouncementBanner() {
         <line x1="12" y1="8" x2="12.01" y2="8" />
       </svg>
       <p className="flex-1 leading-relaxed">{announcement.text}</p>
-      <button onClick={dismissAnnouncement} className="shrink-0 p-1 text-muted hover:text-foreground transition-colors" title="Dismiss announcement">
+      <button onClick={dismissAnnouncement} className="shrink-0 p-1 text-muted hover:text-foreground transition-colors" title={t('announcement.dismiss')}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />

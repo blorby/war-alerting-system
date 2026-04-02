@@ -2,6 +2,7 @@
 
 import { useAppStore } from "@/lib/store";
 import { COUNTRIES } from "@/lib/constants";
+import { useT } from "@/lib/i18n/useT";
 import ThreatHistoryChart from "./ThreatHistoryChart";
 
 const trendArrows = {
@@ -25,6 +26,7 @@ function scoreColor(score: number): string {
 }
 
 export default function ThreatPanel() {
+  const t = useT();
   const threat = useAppStore((s) => s.threat);
 
   const overallScore = threat?.overallScore;
@@ -41,25 +43,25 @@ export default function ThreatPanel() {
           <svg className="h-4 w-4 text-moderate" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span className="text-xs font-bold tracking-wide">THREAT LEVEL</span>
+          <span className="text-xs font-bold tracking-wide">{t("threatPanel.title")}</span>
         </div>
         {overallTrend && (
           <span className={`text-xs font-bold ${trendColors[overallTrend]}`}>
-            {trendArrows[overallTrend]} {overallTrend.toUpperCase()}
+            {trendArrows[overallTrend]} {t(`threatPanel.${overallTrend}`)}
           </span>
         )}
       </div>
 
       {threat === null ? (
         <div className="px-3 py-4 text-center text-xs text-muted">
-          Awaiting assessment...
+          {t("threatPanel.awaiting")}
         </div>
       ) : (
         <>
           {overallScore !== undefined && (
             <div className="flex items-center justify-center gap-1 py-2">
               <span className="text-3xl font-bold">{overallScore.toFixed(1)}</span>
-              <span className="text-sm text-muted">/ 10</span>
+              <span className="text-sm text-muted">{t("threatPanel.outOf")}</span>
             </div>
           )}
 

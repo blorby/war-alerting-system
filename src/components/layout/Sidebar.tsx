@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/i18n/useT";
 
 interface SidebarProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ children, mobileOpen = false, onMobileClose }: SidebarProps) {
+  const t = useT();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -32,11 +34,11 @@ export default function Sidebar({ children, mobileOpen = false, onMobileClose }:
       >
         {/* Mobile close button */}
         <div className="flex items-center justify-between border-b border-border px-3 py-2 md:hidden">
-          <span className="text-xs font-bold tracking-wide">MENU</span>
+          <span className="text-xs font-bold tracking-wide">{t("sidebar.menu")}</span>
           <button
             onClick={onMobileClose}
             className="p-1 text-muted hover:text-foreground"
-            aria-label="Close menu"
+            aria-label={t("sidebar.closeMenu")}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -48,7 +50,7 @@ export default function Sidebar({ children, mobileOpen = false, onMobileClose }:
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="hidden md:flex absolute -right-8 top-3 z-10 h-6 w-6 items-center justify-center rounded-r bg-surface-elevated text-muted hover:text-foreground"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? t("sidebar.expand") : t("sidebar.collapse")}
         >
           <svg
             className={`h-3 w-3 transition-transform ${collapsed ? "rotate-180" : ""}`}

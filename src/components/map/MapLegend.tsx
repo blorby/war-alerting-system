@@ -1,25 +1,27 @@
 "use client";
 
 import { useState } from "react";
-
-const ALERT_STATUSES = [
-  { label: "Active", sublabel: "Active fight / incoming", color: "#ef4444" },
-  { label: "Warning", sublabel: "Warning / pre-impact", color: "#f97316" },
-  { label: "Cleared", sublabel: "Ended / de-escalation", color: "#22c55e" },
-  { label: "Info", sublabel: "Informational", color: "#3b82f6" },
-];
-
-const MAP_SYMBOLS = [
-  { label: "Airstrike", sublabel: "Bomber / aerial attack" },
-  { label: "Explosion", sublabel: "Missile / rocket impact" },
-  { label: "Ground Op", sublabel: "Infantry / ground forces" },
-  { label: "Drone Strike", sublabel: "UAV attack" },
-  { label: "Heat Source", sublabel: "NASA FIRMS thermal anomaly" },
-  { label: "Aircraft", sublabel: "ADS-B commercial / military" },
-];
+import { useT } from "@/lib/i18n/useT";
 
 export default function MapLegend() {
+  const t = useT();
   const [open, setOpen] = useState(false);
+
+  const ALERT_STATUSES = [
+    { label: t("legend.active"), sublabel: t("legend.activeSub"), color: "#ef4444" },
+    { label: t("legend.warning"), sublabel: t("legend.warningSub"), color: "#f97316" },
+    { label: t("legend.cleared"), sublabel: t("legend.clearedSub"), color: "#22c55e" },
+    { label: t("legend.info"), sublabel: t("legend.infoSub"), color: "#3b82f6" },
+  ];
+
+  const MAP_SYMBOLS = [
+    { label: t("legend.airstrike"), sublabel: t("legend.airstrikeSub") },
+    { label: t("legend.explosion"), sublabel: t("legend.explosionSub") },
+    { label: t("legend.groundOp"), sublabel: t("legend.groundOpSub") },
+    { label: t("legend.droneStrike"), sublabel: t("legend.droneStrikeSub") },
+    { label: t("legend.heatSource"), sublabel: t("legend.heatSourceSub") },
+    { label: t("legend.aircraft"), sublabel: t("legend.aircraftSub") },
+  ];
 
   return (
     <div>
@@ -27,12 +29,12 @@ export default function MapLegend() {
         onClick={() => setOpen(!open)}
         className="rounded bg-surface-elevated/90 px-3 py-1.5 text-xs font-medium text-foreground backdrop-blur hover:bg-surface-elevated"
       >
-        Legend
+        {t("legend.button")}
       </button>
 
       {open && (
         <div className="mt-1 w-52 rounded bg-surface-elevated/95 p-3 backdrop-blur">
-          <div className="mb-2 text-xs font-bold text-muted">ALERT STATUS</div>
+          <div className="mb-2 text-xs font-bold text-muted">{t("legend.alertStatus")}</div>
           {ALERT_STATUSES.map((s) => (
             <div key={s.label} className="mb-1 flex items-start gap-2">
               <span
@@ -47,7 +49,7 @@ export default function MapLegend() {
           ))}
 
           <div className="mb-2 mt-3 text-xs font-bold text-muted">
-            MAP SYMBOLS
+            {t("legend.mapSymbols")}
           </div>
           {MAP_SYMBOLS.map((s) => (
             <div key={s.label} className="mb-1">

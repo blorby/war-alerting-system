@@ -13,6 +13,7 @@ import ThreatPanel from "@/components/threats/ThreatPanel";
 import TimelineBar from "@/components/timeline/TimelineBar";
 import BottomPanels from "@/components/panels/BottomPanels";
 import { useAppStore } from "@/lib/store";
+import { useT } from "@/lib/i18n/useT";
 
 // MapContainer uses maplibre-gl which requires window, so load it client-only
 const MapContainer = dynamic(() => import("@/components/map/MapContainer"), {
@@ -25,6 +26,7 @@ const MapContainer = dynamic(() => import("@/components/map/MapContainer"), {
 });
 
 export default function Dashboard() {
+  const t = useT();
   const isLive = useAppStore((s) => s.isLive);
   const lastUpdate = useAppStore((s) => s.lastUpdate);
   const fetchEvents = useAppStore((s) => s.fetchEvents);
@@ -92,7 +94,7 @@ export default function Dashboard() {
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
         </svg>
-        {panelsOpen ? "Less information" : "More information"}
+        {panelsOpen ? t("panels.lessInfo") : t("panels.moreInfo")}
       </button>
 
       {/* Bottom panels — hidden on mobile unless toggled */}

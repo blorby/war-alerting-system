@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppStore } from "@/lib/store";
+import { useT } from "@/lib/i18n/useT";
 
 const typeColors: Record<string, string> = {
   news: "bg-info",
@@ -10,13 +11,14 @@ const typeColors: Record<string, string> = {
 };
 
 export default function NewsTicker() {
+  const t = useT();
   const items = useAppStore((s) => s.tickerItems);
 
   if (items.length === 0) {
     return (
       <div className="flex h-7 shrink-0 items-center border-t border-border bg-surface px-4">
         <span className="text-xs text-muted">
-          Waiting for events...
+          {t("ticker.waiting")}
         </span>
       </div>
     );
@@ -32,7 +34,7 @@ export default function NewsTicker() {
             />
             <span className="text-foreground">{item.text}</span>
             <span className="text-muted">
-              {formatTimeAgo(new Date(item.timestamp))}
+              {formatTimeAgo(new Date(item.timestamp), t)}
             </span>
           </span>
         ))}
@@ -41,13 +43,13 @@ export default function NewsTicker() {
   );
 }
 
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(date: Date, t: (key: string, params?: Record<string, string | number>) => string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return t("time.justNow");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t("time.minutesAgo", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("time.hoursAgo", { n: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t("time.daysAgo", { n: days });
 }
