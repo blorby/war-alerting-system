@@ -12,6 +12,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { Delaunay } from 'd3-delaunay';
 
 const POLYGONS_URL = 'https://oref-map.pages.dev/locations_polygons.json';
 const POINTS_URL = 'https://raw.githubusercontent.com/maorcc/oref-map/main/web/oref_points.json';
@@ -56,6 +57,65 @@ export function convertOrefMapPolygons(
         areaid: district?.areaid ?? null,
         migun_time: district?.migun_time ?? null,
         source: 'oref-map',
+      },
+    });
+  }
+
+  return features;
+}
+
+// Approximate bounding box for Israel + territories (with padding)
+const ISRAEL_BOUNDS: [number, number, number, number] = [34.0, 29.0, 36.5, 33.5]; // [minLng, minLat, maxLng, maxLat]
+
+/**
+ * Generate Voronoi polygon features for cities that don't have oref-map polygons.
+ * @param points - Map of cityName -> [lng, lat] (already in GeoJSON order)
+ * @param existingNames - Set of city names that already have polygons (to skip)
+ * @param districts - districts.json data for areaid/migun_time lookup
+ */
+export function generateVoronoiFeatures(
+  points: Record<string, [number, number]>,
+  existingNames: Set<string>,
+  districts: Record<string, { areaid?: number; migun_time?: number }>,
+): GeoJSON.Feature[] {
+  // Filter to only cities needing Voronoi cells
+  const entries = Object.entries(points).filter(([name]) => !existingNames.has(name));
+  if (entries.length === 0) return [];
+
+  const names = entries.map(([name]) => name);
+  const coords = entries.map(([, coord]) => coord);
+
+  // Build Delaunay triangulation and Voronoi diagram
+  const delaunay = Delaunay.from(coords);
+  const voronoi = delaunay.voronoi(ISRAEL_BOUNDS);
+
+  const features: GeoJSON.Feature[] = [];
+
+  for (let i = 0; i < names.length; i++) {
+    const cell = voronoi.cellPolygon(i);
+    if (!cell) continue;
+
+    // cell is already a closed ring of [x, y] points
+    const ring: [number, number][] = cell.map(([x, y]) => [x, y] as [number, number]);
+    // Ensure closed
+    if (ring.length > 0) {
+      const first = ring[0];
+      const last = ring[ring.length - 1];
+      if (first[0] !== last[0] || first[1] !== last[1]) {
+        ring.push([...first] as [number, number]);
+      }
+    }
+
+    const district = districts[names[i]];
+
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [ring] },
+      properties: {
+        name: names[i],
+        areaid: district?.areaid ?? null,
+        migun_time: district?.migun_time ?? null,
+        source: 'voronoi',
       },
     });
   }

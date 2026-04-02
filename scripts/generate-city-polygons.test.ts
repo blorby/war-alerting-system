@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { convertOrefMapPolygons, swapLatLng } from './generate-city-polygons';
+import { convertOrefMapPolygons, swapLatLng, generateVoronoiFeatures } from './generate-city-polygons';
 
 describe('swapLatLng', () => {
   it('swaps [lat, lng] to [lng, lat]', () => {
@@ -52,5 +52,42 @@ describe('convertOrefMapPolygons', () => {
     const features = convertOrefMapPolygons(polygonsData, districts);
     expect(features).toHaveLength(1);
     expect(features[0].properties!.name).toBe('אילת');
+  });
+});
+
+describe('generateVoronoiFeatures', () => {
+  it('generates polygon features for points without existing polygons', () => {
+    const points: Record<string, [number, number]> = {
+      'cityA': [35.0, 31.0],  // [lng, lat] — already swapped
+      'cityB': [35.1, 31.1],
+      'cityC': [35.2, 31.0],
+    };
+    const existingNames = new Set<string>(); // none have polygons yet
+    const districts: Record<string, { areaid?: number; migun_time?: number }> = {};
+
+    const features = generateVoronoiFeatures(points, existingNames, districts);
+
+    expect(features).toHaveLength(3);
+    for (const f of features) {
+      expect(f.geometry.type).toBe('Polygon');
+      expect(f.properties!.source).toBe('voronoi');
+      // Each polygon should have a closed ring
+      const ring = (f.geometry as GeoJSON.Polygon).coordinates[0];
+      expect(ring[0]).toEqual(ring[ring.length - 1]);
+    }
+  });
+
+  it('skips points that already have polygons', () => {
+    const points: Record<string, [number, number]> = {
+      'cityA': [35.0, 31.0],
+      'cityB': [35.1, 31.1],
+    };
+    const existingNames = new Set(['cityA']);
+    const districts: Record<string, { areaid?: number; migun_time?: number }> = {};
+
+    const features = generateVoronoiFeatures(points, existingNames, districts);
+
+    expect(features).toHaveLength(1);
+    expect(features[0].properties!.name).toBe('cityB');
   });
 });
