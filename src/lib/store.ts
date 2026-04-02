@@ -177,6 +177,7 @@ let _lastEvents: EventData[] = [];
 let _lastFront = '';
 let _lastType = '';
 let _lastPlaybackTime: Date | null = null;
+let _lastLiveWindow: string | null = null;
 let _lastResult: EventData[] = [];
 
 export function selectFilteredEvents(state: AppState): EventData[] {
@@ -184,7 +185,8 @@ export function selectFilteredEvents(state: AppState): EventData[] {
     state.events === _lastEvents &&
     state.activeFront === _lastFront &&
     state.activeType === _lastType &&
-    state.playbackTime === _lastPlaybackTime
+    state.playbackTime === _lastPlaybackTime &&
+    state.liveWindow === _lastLiveWindow
   ) {
     return _lastResult;
   }
@@ -193,6 +195,7 @@ export function selectFilteredEvents(state: AppState): EventData[] {
   _lastFront = state.activeFront;
   _lastType = state.activeType;
   _lastPlaybackTime = state.playbackTime;
+  _lastLiveWindow = state.liveWindow;
 
   let filtered = state.events;
 
@@ -219,6 +222,16 @@ export function selectFilteredEvents(state: AppState): EventData[] {
   if (state.playbackTime) {
     const cutoff = state.playbackTime.getTime();
     filtered = filtered.filter(e => new Date(e.timestamp).getTime() <= cutoff);
+  }
+
+  // Apply live window filter
+  if (!state.playbackTime && state.liveWindow) {
+    const windowMs: Record<string, number> = { '15m': 15*60*1000, '1h': 60*60*1000, '3h': 3*60*60*1000 };
+    const ms = windowMs[state.liveWindow];
+    if (ms) {
+      const cutoff = Date.now() - ms;
+      filtered = filtered.filter(e => new Date(e.timestamp).getTime() >= cutoff);
+    }
   }
 
   _lastResult = filtered;

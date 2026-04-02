@@ -176,29 +176,8 @@ export default function MapContainer() {
     zoom: DEFAULT_ZOOM,
   });
 
-  const LIVE_WINDOW_MS: Record<string, number> = { '15m': 15*60*1000, '1h': 60*60*1000, '3h': 3*60*60*1000 };
-
-  const filteredEvents = useAppStore(selectFilteredEvents);
-  const liveWindow = useAppStore((s) => s.liveWindow);
+  const events = useAppStore(selectFilteredEvents);
   const playbackTime = useAppStore((s) => s.playbackTime);
-
-  // Timer to refresh live window filtering periodically
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!liveWindow || playbackTime) return;
-    const id = setInterval(() => setTick((t) => t + 1), 10_000);
-    return () => clearInterval(id);
-  }, [liveWindow, playbackTime]);
-
-  // Apply live window time filter on top of state-filtered events
-  const events = useMemo(() => {
-    if (playbackTime || !liveWindow) return filteredEvents;
-    const windowMs = LIVE_WINDOW_MS[liveWindow];
-    if (!windowMs) return filteredEvents;
-    const cutoff = Date.now() - windowMs;
-    return filteredEvents.filter((e) => new Date(e.timestamp).getTime() >= cutoff);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredEvents, liveWindow, playbackTime]);
 
   const geoEvents = useMemo(
     () => events.filter((e) => e.lat != null && e.lng != null),

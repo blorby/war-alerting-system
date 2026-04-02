@@ -92,7 +92,7 @@ export default function Dashboard() {
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
         </svg>
-        {panelsOpen ? "Hide Panels" : "Show Panels"}
+        {panelsOpen ? "Less information" : "More information"}
       </button>
 
       {/* Bottom panels — hidden on mobile unless toggled */}

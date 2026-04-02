@@ -58,7 +58,19 @@ export default function TimelineBar({
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-  const [selectedRange, setSelectedRange] = useState<TimeRange>("24h");
+  const [selectedRange, setSelectedRangeLocal] = useState<TimeRange>("24h");
+  const fetchEvents = useAppStore((s) => s.fetchEvents);
+  const setSelectedRange = (range: TimeRange) => {
+    setSelectedRangeLocal(range);
+    const rangeMs = getRangeMs(range);
+    if (rangeMs) {
+      const since = new Date(Date.now() - rangeMs).toISOString();
+      fetchEvents({ since });
+    } else {
+      // "All" — fetch without time constraint (gets latest 1000)
+      fetchEvents({ since: new Date('2020-01-01').toISOString() });
+    }
+  };
   const [showShortcuts, setShowShortcuts] = useState(false);
   const events = useAppStore((state) => state.events);
 
