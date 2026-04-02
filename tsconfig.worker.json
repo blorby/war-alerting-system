@@ -13,5 +13,5 @@
     "sourceMap": true
   },
   "include": ["src/workers/**/*", "src/lib/**/*", "src/types/**/*"],
-  "exclude": ["src/app/**/*", "src/components/**/*", "src/lib/constants.ts", "**/*.test.ts"]
+  "exclude": ["src/app/**/*", "src/components/**/*", "src/lib/constants.ts", "src/lib/credibility.ts", "src/lib/store.ts", "**/*.test.ts"]
 }
