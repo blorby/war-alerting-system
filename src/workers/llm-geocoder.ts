@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq, isNull, desc, and } from 'drizzle-orm';
+import { eq, isNull, desc, and, inArray } from 'drizzle-orm';
 import AnthropicBedrock from '@anthropic-ai/bedrock-sdk';
 import { events } from '../lib/db/schema';
 
@@ -22,32 +22,48 @@ const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const BATCH_SIZE = 20; // events per batch
 const MAX_PER_CYCLE = 40; // max events to geocode per cycle
 
+// Sources that require LLM relevance filtering before being shown on map
+const LLM_FILTERED_SOURCES = new Set([
+  'telegram-global-moked',
+  'telegram-before-red-alert',
+  'rotter',
+  'ynet-news',
+]);
+
 // --- Prompt ---
 
-const SYSTEM_PROMPT = `You are a geographic intelligence analyst. Given a list of news events about the Middle East/Israel conflict, determine the most specific geographic location for each event.
+const SYSTEM_PROMPT = `You are a geographic intelligence analyst specializing in Middle East security events. Given a list of news/social media events, you must:
 
-For each event, output the best lat/lng coordinates and a location name. Focus on:
-- City or district names mentioned in the title/description
-- Known military bases, borders, or landmarks
-- Country-level coordinates as a last resort
+1. Determine if each event is RELEVANT to security, military, terrorism, missiles, rockets, alerts, war, conflict, or civil defense. General news, sports, weather, politics without security implications, and entertainment are NOT relevant.
+2. For relevant events, extract the most specific geographic location (lat/lng coordinates and location name).
+3. For relevant events, extract or estimate the actual time of the event described (not the publication time).
 
 Output ONLY a JSON array with one object per event:
 [
   {
     "id": "<event id>",
+    "relevant": true|false,
     "lat": <number or null>,
     "lng": <number or null>,
     "locationName": "<city/area name or null>",
-    "country": "<2-letter ISO code or null>"
+    "country": "<2-letter ISO code or null>",
+    "eventTime": "<ISO 8601 timestamp or null>",
+    "severity": "<critical|moderate|info>"
   }
 ]
 
-Rules:
+Severity guide:
+- "critical": active attacks, missile strikes, active alerts, terror attacks, casualties
+- "moderate": military movements, escalations, threats, incidents without confirmed casualties
+- "info": reports, analysis, diplomatic events, minor incidents
+
+Location rules:
 - If you cannot determine any location, set lat/lng/locationName to null
 - Be precise: prefer city-level coords over country-level
 - For Israeli alerts mentioning Hebrew district names, use the district center
-- For "Gaza" use 31.5, 34.47; "Tel Aviv" 32.08, 34.78; "Tehran" 35.69, 51.39
-- Output ONLY the JSON array, no markdown fences, no commentary`;
+- Common coords: Gaza 31.5/34.47, Tel Aviv 32.08/34.78, Tehran 35.69/51.39, Beirut 33.89/35.50, Damascus 33.51/36.28, Sana'a 15.35/44.21
+
+Output ONLY the JSON array, no markdown fences, no commentary.`;
 
 // --- Functions ---
 
@@ -57,21 +73,30 @@ function sleep(ms: number): Promise<void> {
 
 interface GeoResult {
   id: string;
+  relevant?: boolean;
   lat: number | null;
   lng: number | null;
   locationName: string | null;
   country: string | null;
+  eventTime?: string | null;
+  severity?: string;
 }
 
 async function geocodeBatch(
-  batch: { id: string; title: string; description: string | null; source: string }[],
+  batch: { id: string; title: string; description: string | null; source: string; timestamp: Date }[],
 ): Promise<GeoResult[]> {
+  const needsFiltering = batch.some((e) => LLM_FILTERED_SOURCES.has(e.source));
+
   const eventList = batch
     .map(
       (e, i) =>
-        `${i + 1}. [id=${e.id}] [source=${e.source}] ${e.title}${e.description ? ' — ' + e.description.slice(0, 200) : ''}`,
+        `${i + 1}. [id=${e.id}] [source=${e.source}] [published=${e.timestamp.toISOString()}] ${e.title}${e.description ? ' — ' + e.description.slice(0, 200) : ''}`,
     )
     .join('\n');
+
+  const userContent = needsFiltering
+    ? `Analyze these ${batch.length} events for relevance, location, and event time:\n\n${eventList}`
+    : `Geocode these ${batch.length} events:\n\n${eventList}`;
 
   const response = await anthropic.messages.create({
     model: MODEL,
@@ -80,7 +105,7 @@ async function geocodeBatch(
     messages: [
       {
         role: 'user',
-        content: `Geocode these ${batch.length} events:\n\n${eventList}`,
+        content: userContent,
       },
     ],
   });
@@ -111,9 +136,10 @@ async function runCycle(): Promise<void> {
       title: events.title,
       description: events.description,
       source: events.source,
+      timestamp: events.timestamp,
     })
     .from(events)
-    .where(and(isNull(events.lat), isNull(events.lng)))
+    .where(and(isNull(events.lat), isNull(events.lng), eq(events.isActive, true)))
     .orderBy(desc(events.timestamp))
     .limit(MAX_PER_CYCLE);
 
@@ -125,24 +151,53 @@ async function runCycle(): Promise<void> {
   console.log(`[llm-geocoder] found ${ungeocodedEvents.length} events to geocode`);
 
   let totalUpdated = 0;
+  let totalFiltered = 0;
 
   // Process in batches
   for (let i = 0; i < ungeocodedEvents.length; i += BATCH_SIZE) {
     const batch = ungeocodedEvents.slice(i, i + BATCH_SIZE);
     const results = await geocodeBatch(batch);
 
+    const idsToDeactivate: string[] = [];
+
     for (const result of results) {
+      const isFiltered = LLM_FILTERED_SOURCES.has(
+        batch.find((b) => b.id === result.id)?.source ?? '',
+      );
+
+      // If this is a filtered source and LLM says not relevant, deactivate
+      if (isFiltered && result.relevant === false) {
+        idsToDeactivate.push(result.id);
+        totalFiltered++;
+        continue;
+      }
+
       if (!result.lat || !result.lng) continue;
 
       try {
+        const updateData: Record<string, unknown> = {
+          lat: result.lat,
+          lng: result.lng,
+          locationName: result.locationName,
+          country: result.country,
+        };
+
+        // Update severity if LLM provided one
+        if (result.severity) {
+          updateData.severity = result.severity;
+        }
+
+        // Update timestamp if LLM extracted a more accurate event time
+        if (result.eventTime) {
+          const eventDate = new Date(result.eventTime);
+          if (!isNaN(eventDate.getTime())) {
+            updateData.timestamp = eventDate;
+          }
+        }
+
         await db
           .update(events)
-          .set({
-            lat: result.lat,
-            lng: result.lng,
-            locationName: result.locationName,
-            country: result.country,
-          })
+          .set(updateData)
           .where(eq(events.id, result.id));
         totalUpdated++;
       } catch (err) {
@@ -153,6 +208,14 @@ async function runCycle(): Promise<void> {
       }
     }
 
+    // Batch deactivate irrelevant events
+    if (idsToDeactivate.length > 0) {
+      await db
+        .update(events)
+        .set({ isActive: false })
+        .where(inArray(events.id, idsToDeactivate));
+    }
+
     // Small delay between batches to respect rate limits
     if (i + BATCH_SIZE < ungeocodedEvents.length) {
       await sleep(2000);
@@ -160,7 +223,7 @@ async function runCycle(): Promise<void> {
   }
 
   console.log(
-    `[llm-geocoder] cycle complete: processed=${ungeocodedEvents.length} updated=${totalUpdated}`,
+    `[llm-geocoder] cycle complete: processed=${ungeocodedEvents.length} updated=${totalUpdated} filtered_irrelevant=${totalFiltered}`,
   );
 }
 

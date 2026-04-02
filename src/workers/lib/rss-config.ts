@@ -30,4 +30,7 @@ export const RSS_FEEDS: RssFeedConfig[] = [
   // Iran OSINT
   { url: 'https://en.radiofarda.com/api/z-pqpiev-qpp', name: 'Radio Farda Iran News', source: 'radiofarda', category: 'iran_osint', language: 'en' },
   { url: 'https://www.iaea.org/feeds/iaea-newscenter-news', name: 'IAEA News', source: 'iaea', category: 'iran_osint', language: 'en' },
+  // Hebrew news aggregators
+  { url: 'http://rotter.net/rss/rotternews.xml', name: 'Rotter News', source: 'rotter', category: 'israeli_news', language: 'he' },
+  { url: 'https://www.ynet.co.il/Integration/StoryRss2.xml', name: 'Ynet News', source: 'ynet-news', category: 'israeli_news', language: 'he' },
 ];

@@ -9,4 +9,6 @@ export const TELEGRAM_CHANNELS: TelegramChannelConfig[] = [
   { channel: 'PikudHaOref_all', name: 'HFC Alerts', source: 'telegram-hfc-alerts', language: 'he' },
   { channel: 'HanhayotPikudHaOref', name: 'HFC Instructions', source: 'telegram-hfc-instructions', language: 'he' },
   { channel: 'idfofficial', name: 'IDF Official', source: 'telegram-idf', language: 'en' },
+  { channel: 'GLOBAL_Telegram_MOKED', name: 'Global Moked', source: 'telegram-global-moked', language: 'he' },
+  { channel: 'beforeredalert', name: 'Before Red Alert', source: 'telegram-before-red-alert', language: 'he' },
 ];

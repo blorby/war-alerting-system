@@ -35,6 +35,11 @@ export const SOURCE_CATEGORIES: Record<string, string> = {
   'opensky': 'osint',
   // Social
   'telegram-idf': 'social',
+  'telegram-global-moked': 'social',
+  'telegram-before-red-alert': 'social',
+  // Hebrew news aggregators
+  'rotter': 'news',
+  'ynet-news': 'news',
 };
 
 export const INTERVAL_MS = 2 * 60_000; // 2 minutes

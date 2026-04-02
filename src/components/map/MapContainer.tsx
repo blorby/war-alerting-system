@@ -79,6 +79,10 @@ const POLYGONS_LINE_LAYER = 'alert-polygons-line';
 const TRAJECTORIES_SOURCE = 'trajectories-source';
 const TRAJECTORIES_LAYER = 'trajectories-line';
 
+const HIT_ZONES_SOURCE = 'hit-zones-source';
+const HIT_ZONES_LAYER = 'hit-zones-fill';
+const HIT_ZONES_RING_LAYER = 'hit-zones-ring';
+
 const LAUNCH_ORIGINS: Record<string, [number, number]> = {
   iran: [53.0, 32.5],
   lebanon: [35.8, 33.9],
@@ -196,20 +200,24 @@ export default function MapContainer() {
     const statusMap = new Map<number, string>();
     const severityRank: Record<string, number> = { critical: 3, moderate: 2, info: 1, cleared: 0 };
 
+    // Security-relevant event types that should trigger polygon highlighting
+    const securityTypes = new Set(['alert', 'strike', 'missile', 'thermal']);
+
     for (const e of allStoreEvents) {
-      if (e.type === 'alert' && e.locationName) {
-        const district = districts[e.locationName];
-        if (!district?.areaid) continue;
+      if (!e.locationName) continue;
+      if (!securityTypes.has(e.type)) continue;
 
-        const current = statusMap.get(district.areaid);
-        const currentRank = current ? (severityRank[current] ?? 0) : -1;
-        const newRank = severityRank[e.severity] ?? 0;
+      const district = districts[e.locationName];
+      if (!district?.areaid) continue;
 
-        if (e.isActive && newRank > currentRank) {
-          statusMap.set(district.areaid, e.severity);
-        } else if (!e.isActive && !statusMap.has(district.areaid)) {
-          statusMap.set(district.areaid, 'cleared');
-        }
+      const current = statusMap.get(district.areaid);
+      const currentRank = current ? (severityRank[current] ?? 0) : -1;
+      const newRank = severityRank[e.severity] ?? 0;
+
+      if (e.isActive && newRank > currentRank) {
+        statusMap.set(district.areaid, e.severity);
+      } else if (!e.isActive && !statusMap.has(district.areaid)) {
+        statusMap.set(district.areaid, 'cleared');
       }
     }
     return statusMap;
@@ -227,6 +235,36 @@ export default function MapContainer() {
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: arc },
         properties: { severity: e.severity },
+      });
+    }
+    return { type: 'FeatureCollection', features };
+  }, [geoEvents]);
+
+  // Hit zone circles for strike/missile/alert events — generates small circular polygons
+  const hitZoneGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
+    const hitTypes = new Set(['strike', 'missile', 'alert']);
+    const features: GeoJSON.Feature[] = [];
+
+    for (const e of geoEvents) {
+      if (!hitTypes.has(e.type)) continue;
+      if (e.severity === 'cleared') continue;
+
+      // Radius in degrees (~2km for critical, ~1km for others)
+      const radius = e.severity === 'critical' ? 0.02 : 0.01;
+      const segments = 32;
+      const coords: [number, number][] = [];
+      for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * 2 * Math.PI;
+        coords.push([
+          e.lng! + radius * Math.cos(angle) * 1.2, // stretch slightly for lng
+          e.lat! + radius * Math.sin(angle),
+        ]);
+      }
+
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Polygon', coordinates: [coords] },
+        properties: { severity: e.severity, type: e.type },
       });
     }
     return { type: 'FeatureCollection', features };
@@ -325,6 +363,7 @@ export default function MapContainer() {
           locationName: e.locationName ?? "",
           source: e.source,
           timestamp: e.timestamp,
+          corroborated: e.corroborated ? "true" : "false",
         },
       })),
     };
@@ -468,12 +507,17 @@ export default function MapContainer() {
         const sevLabel = severityLabels[p.severity] ?? p.severity;
         const typeLabel = typeLabels[p.type] ?? p.type;
 
+        const reliabilityTag = p.corroborated === "true"
+          ? `<span style="background:rgba(34,197,94,0.2);color:#4ade80;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:bold">CONFIRMED — MULTIPLE SOURCES</span>`
+          : `<span style="background:rgba(234,179,8,0.2);color:#facc15;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:bold">SINGLE SOURCE — LESS RELIABLE</span>`;
+
         new maplibregl.Popup({ closeButton: true, className: "event-popup", maxWidth: "320px" })
           .setLngLat(e.lngLat)
           .setHTML(
             `<div style="font-size:12px;line-height:1.4">` +
             `<div style="margin-bottom:4px"><strong>${p.title}</strong></div>` +
             `<div style="margin-bottom:4px;opacity:0.8">${sevLabel} &middot; ${typeLabel}</div>` +
+            `<div style="margin-bottom:4px">${reliabilityTag}</div>` +
             (p.locationName ? `<div style="margin-bottom:4px">📍 ${p.locationName}</div>` : "") +
             `<div style="opacity:0.6">Source: <strong>${p.source}</strong>${time ? ` &middot; ${time}` : ""}</div>` +
             (p.timestamp ? `<div style="opacity:0.5;font-size:10px;margin-top:2px">${new Date(p.timestamp).toLocaleString()}</div>` : "") +
@@ -536,7 +580,7 @@ export default function MapContainer() {
               ['==', ['get', 'severity'], 'moderate'], '#f97316',
               ['==', ['get', 'severity'], 'info'], '#3b82f6',
               ['==', ['get', 'severity'], 'cleared'], '#22c55e',
-              'rgba(0,0,0,0)',
+              '#6b7280',
             ] as unknown as maplibregl.ExpressionSpecification,
             'fill-opacity': [
               'case',
@@ -544,7 +588,7 @@ export default function MapContainer() {
               ['==', ['get', 'severity'], 'moderate'], 0.35,
               ['==', ['get', 'severity'], 'info'], 0.25,
               ['==', ['get', 'severity'], 'cleared'], 0.2,
-              0,
+              0.04,
             ] as unknown as maplibregl.ExpressionSpecification,
           },
         },
@@ -563,16 +607,20 @@ export default function MapContainer() {
               ['==', ['get', 'severity'], 'moderate'], '#f97316',
               ['==', ['get', 'severity'], 'info'], '#3b82f6',
               ['==', ['get', 'severity'], 'cleared'], '#22c55e',
-              'rgba(0,0,0,0)',
+              '#6b7280',
             ] as unknown as maplibregl.ExpressionSpecification,
-            'line-width': 2.5,
+            'line-width': [
+              'case',
+              ['==', ['get', 'severity'], 'none'], 0.8,
+              2.5,
+            ] as unknown as maplibregl.ExpressionSpecification,
             'line-opacity': [
               'case',
               ['==', ['get', 'severity'], 'critical'], 0.9,
               ['==', ['get', 'severity'], 'moderate'], 0.7,
               ['==', ['get', 'severity'], 'info'], 0.5,
               ['==', ['get', 'severity'], 'cleared'], 0.4,
-              0,
+              0.2,
             ] as unknown as maplibregl.ExpressionSpecification,
           },
         },
@@ -618,6 +666,70 @@ export default function MapContainer() {
       );
     }
   }, [trajectoryGeojson, mapReady]);
+
+  // --- Hit zone circles for strikes/missiles ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const source = map.getSource(HIT_ZONES_SOURCE) as maplibregl.GeoJSONSource | undefined;
+
+    if (source) {
+      source.setData(hitZoneGeojson);
+    } else {
+      map.addSource(HIT_ZONES_SOURCE, { type: 'geojson', data: hitZoneGeojson });
+
+      const beforeLayer = map.getLayer(EVENTS_GLOW_LAYER) ? EVENTS_GLOW_LAYER : undefined;
+
+      // Translucent fill for hit zone
+      map.addLayer(
+        {
+          id: HIT_ZONES_LAYER,
+          type: 'fill',
+          source: HIT_ZONES_SOURCE,
+          paint: {
+            'fill-color': [
+              'match',
+              ['get', 'severity'],
+              'critical', '#ef4444',
+              'moderate', '#f97316',
+              '#3b82f6',
+            ] as unknown as maplibregl.ExpressionSpecification,
+            'fill-opacity': [
+              'match',
+              ['get', 'severity'],
+              'critical', 0.2,
+              'moderate', 0.15,
+              0.1,
+            ] as unknown as maplibregl.ExpressionSpecification,
+          },
+        },
+        beforeLayer,
+      );
+
+      // Pulsing ring outline
+      map.addLayer(
+        {
+          id: HIT_ZONES_RING_LAYER,
+          type: 'line',
+          source: HIT_ZONES_SOURCE,
+          paint: {
+            'line-color': [
+              'match',
+              ['get', 'severity'],
+              'critical', '#ef4444',
+              'moderate', '#f97316',
+              '#3b82f6',
+            ] as unknown as maplibregl.ExpressionSpecification,
+            'line-width': 1.5,
+            'line-opacity': 0.6,
+            'line-dasharray': [3, 3],
+          },
+        },
+        beforeLayer,
+      );
+    }
+  }, [hitZoneGeojson, mapReady]);
 
   const handleFocusChange = useCallback(
     (bounds: [[number, number], [number, number]]) => {
