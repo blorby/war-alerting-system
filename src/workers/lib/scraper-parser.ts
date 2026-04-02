@@ -52,12 +52,15 @@ function stripHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/<[^>]+>/g, '')
-    // Intentionally do not decode &lt; and &gt; to avoid reintroducing HTML tag delimiters
+    // Intentionally do not decode &lt; and &gt; to avoid reintroducing HTML tag delimiters.
+    // Also remove any literal `<` or `>` that might appear after decoding entities to avoid
+    // reintroducing HTML tag delimiters via multi-step sanitization.
     .replace(/&quot;/g, '"')
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_, dec: string) => String.fromCharCode(parseInt(dec, 10)))
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
+    .replace(/[<>]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
