@@ -256,7 +256,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         // Fetch alerts + other events separately so alerts aren't drowned out by flights
         const [alertRes, otherRes] = await Promise.all([
           fetch('/api/events?limit=200&active=true&type=alert'),
-          fetch('/api/events?limit=100&active=true'),
+          fetch('/api/events?limit=200&active=true'),
         ]);
         const alerts = alertRes.ok ? ((await alertRes.json()).events ?? []) : [];
         const others = otherRes.ok ? ((await otherRes.json()).events ?? []) : [];
