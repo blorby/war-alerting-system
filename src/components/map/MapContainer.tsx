@@ -6,7 +6,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/geo/regions";
 import { useAppStore, selectFilteredEvents } from "@/lib/store";
 import { EVENT_TYPES } from "@/lib/constants";
-import districtsData from '@/lib/geo/districts.json';
 import cityPolygonsData from '@/lib/geo/city-polygons.json';
 import MapFocus from "./MapFocus";
 import MapLayers from "./MapLayers";
@@ -194,11 +193,8 @@ export default function MapContainer() {
   );
 
   const cityAlertStatus = useMemo(() => {
-    const districts = districtsData as Record<string, { areaid: number }>;
     const statusMap = new Map<string, string>();   // cityName → severity
     const iconMap = new Map<string, string>();      // cityName → icon emoji
-    const areaFallback = new Map<number, string>(); // areaid → severity (for unmatched polygons)
-    const areaIconFallback = new Map<number, string>(); // areaid → icon emoji
     const severityRank: Record<string, number> = { critical: 3, moderate: 2, info: 1, cleared: 0 };
     const CLEARED_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -213,7 +209,8 @@ export default function MapContainer() {
 
       const newRank = severityRank[e.severity] ?? 0;
 
-      // Direct city name match
+      // Direct city name match only — no areaid fallback to avoid
+      // lighting up entire regions when only specific cities are alerting
       if (e.isActive) {
         const current = statusMap.get(name);
         const currentRank = current ? (severityRank[current] ?? 0) : -1;
@@ -229,28 +226,9 @@ export default function MapContainer() {
           iconMap.set(name, '\u2705'); // ✅ ok to leave
         }
       }
-
-      // Also track areaid for fallback
-      const areaid = districts[name]?.areaid;
-      if (areaid) {
-        if (e.isActive) {
-          const currentArea = areaFallback.get(areaid);
-          const currentAreaRank = currentArea ? (severityRank[currentArea] ?? 0) : -1;
-          if (newRank > currentAreaRank) {
-            areaFallback.set(areaid, e.severity);
-            areaIconFallback.set(areaid, alertTitleToIcon(e.title));
-          }
-        } else if (!areaFallback.has(areaid)) {
-          const eventTime = new Date(e.timestamp).getTime();
-          if (now - eventTime <= CLEARED_WINDOW_MS) {
-            areaFallback.set(areaid, 'cleared');
-            areaIconFallback.set(areaid, '\u2705');
-          }
-        }
-      }
     }
 
-    return { statusMap, iconMap, areaFallback, areaIconFallback };
+    return { statusMap, iconMap };
   }, [events, playbackTime]);
 
   const trajectoryGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
@@ -574,21 +552,15 @@ export default function MapContainer() {
   // --- Alert zone polygons (static import, no async fetch) ---
   const polygonGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
     const base = cityPolygonsData as unknown as GeoJSON.FeatureCollection;
-    const { statusMap, iconMap, areaFallback, areaIconFallback } = cityAlertStatus;
+    const { statusMap, iconMap } = cityAlertStatus;
     return {
       type: 'FeatureCollection',
       features: base.features.map((feature) => {
         const props = feature.properties as Record<string, unknown>;
         const name = props?.name as string;
-        const areaid = props?.areaid as number | null;
 
-        // Try direct city name match first, then areaid fallback
-        const severity = statusMap.get(name)
-          ?? (areaid ? areaFallback.get(areaid) : undefined)
-          ?? 'none';
-        const alertIcon = iconMap.get(name)
-          ?? (areaid ? areaIconFallback.get(areaid) : undefined)
-          ?? '';
+        const severity = statusMap.get(name) ?? 'none';
+        const alertIcon = iconMap.get(name) ?? '';
 
         return {
           ...feature,
