@@ -6,26 +6,27 @@ export const dynamic = 'force-dynamic';
 
 const SINCE = new Date('2025-02-27T00:00:00Z');
 
-// Hebrew titles for missile/rocket alerts
-const MISSILE_TITLE = 'ירי רקטות וטילים';
-const UAV_TITLE = 'חדירת כלי טיס עוין';
+// Hebrew keywords for missile/rocket alerts
+const MISSILE_KEYWORD = 'ירי רקטות וטילים';
+const UAV_KEYWORD = 'חדירת כלי טיס עוין';
 
 export async function GET() {
   try {
     // Count distinct attack waves per day.
     // Each wave = alerts within the same 5-minute window.
-    // This avoids counting each per-district notification as a separate attack.
+    // Matches both Oref direct (type='alert', exact title) and
+    // Telegram HFC (type='social', title/description contains keyword).
     const rows = await db
       .select({
         day: sql<string>`date_trunc('day', ${events.timestamp})::date`.as('day'),
-        missiles: sql<number>`count(distinct date_trunc('minute', ${events.timestamp})) filter (where ${events.title} = ${MISSILE_TITLE} and ${events.severity} = 'critical')`.as('missiles'),
-        uavs: sql<number>`count(distinct date_trunc('minute', ${events.timestamp})) filter (where ${events.title} = ${UAV_TITLE} and ${events.severity} = 'critical')`.as('uavs'),
+        missiles: sql<number>`count(distinct date_trunc('minute', ${events.timestamp})) filter (where (${events.title} = ${MISSILE_KEYWORD} or (${events.source} = 'telegram-hfc-alerts' and (${events.title} like ${'%' + MISSILE_KEYWORD + '%'} or ${events.description} like ${'%' + MISSILE_KEYWORD + '%'}))) and ${events.severity} = 'critical')`.as('missiles'),
+        uavs: sql<number>`count(distinct date_trunc('minute', ${events.timestamp})) filter (where (${events.title} = ${UAV_KEYWORD} or (${events.source} = 'telegram-hfc-alerts' and (${events.title} like ${'%' + UAV_KEYWORD + '%'} or ${events.description} like ${'%' + UAV_KEYWORD + '%'}))) and ${events.severity} = 'critical')`.as('uavs'),
       })
       .from(events)
       .where(
         and(
           gte(events.timestamp, SINCE),
-          eq(events.type, 'alert'),
+          sql`(${events.type} = 'alert' or (${events.type} = 'social' and ${events.source} = 'telegram-hfc-alerts'))`,
         ),
       )
       .groupBy(sql`date_trunc('day', ${events.timestamp})::date`)

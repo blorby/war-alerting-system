@@ -6,6 +6,7 @@ import { mapTitle } from './lib/normalize';
 import { orefCurrentHash } from './lib/dedup';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { proxyFetch } from './lib/ssh-fetch';
 
 // Load districts once at startup.
 const districtsPath = join(__dirname, '../lib/geo/districts.json');
@@ -37,21 +38,12 @@ function sleep(ms: number): Promise<void> {
 async function fetchAlerts(): Promise<OrefCurrentAlert[]> {
   const url = `${OREF_BASE_URL}/WarningMessages/alert/alerts.json`;
 
-  const res = await fetch(url, {
-    headers: {
-      'Referer': 'https://www.oref.org.il/',
-      'X-Requested-With': 'XMLHttpRequest',
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    },
-    signal: AbortSignal.timeout(15_000),
+  let text = await proxyFetch(url, {
+    'Referer': 'https://www.oref.org.il/',
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   });
-
-  if (!res.ok) {
-    throw new Error(`Oref current alerts returned ${res.status}`);
-  }
-
-  let text = await res.text();
 
   // Strip UTF-8 BOM if present
   if (text.startsWith('\uFEFF')) {
