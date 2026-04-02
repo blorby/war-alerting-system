@@ -23,6 +23,7 @@ export function computeEventCredibility(source: string, corroborated: boolean): 
 
 export function computeNewsCredibility(source: string): number {
   const category = getSourceCategory(source);
+  if (category === 'unknown') return TIER_SCORES.news;
   return TIER_SCORES[category] ?? TIER_SCORES.news;
 }
 

@@ -77,10 +77,10 @@ describe('computeNewsCredibility', () => {
     expect(computeNewsCredibility('toi')).toBe(60);
   });
 
-  it('falls back to unknown tier score for unrecognized source', () => {
-    // getSourceCategory returns 'unknown' which has TIER_SCORES entry of 20
-    // The ?? TIER_SCORES.news fallback only triggers if the category is missing from TIER_SCORES entirely
-    expect(computeNewsCredibility('some-random-source')).toBe(20);
+  it('falls back to news tier for unrecognized source', () => {
+    // News items from unknown sources default to news-tier credibility (60)
+    // since they're already in the news feed
+    expect(computeNewsCredibility('some-random-source')).toBe(60);
   });
 });
 
