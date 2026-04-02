@@ -212,8 +212,10 @@ export default function MapContainer() {
     const areaFallback = new Map<number, string>(); // areaid → severity (for unmatched polygons)
     const areaIconFallback = new Map<number, string>(); // areaid → icon emoji
     const severityRank: Record<string, number> = { critical: 3, moderate: 2, info: 1, cleared: 0 };
+    const CLEARED_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
     const securityTypes = new Set(['alert', 'strike', 'missile', 'thermal']);
+    const now = playbackTime ? playbackTime.getTime() : Date.now();
 
     for (const e of events) {
       if (!securityTypes.has(e.type)) continue;
@@ -232,7 +234,12 @@ export default function MapContainer() {
           iconMap.set(name, alertTitleToIcon(e.title));
         }
       } else if (!statusMap.has(name)) {
-        statusMap.set(name, 'cleared');
+        // Show 'cleared' (green "ok to leave") for 15 minutes after event ended
+        const eventTime = new Date(e.timestamp).getTime();
+        if (now - eventTime <= CLEARED_WINDOW_MS) {
+          statusMap.set(name, 'cleared');
+          iconMap.set(name, '\u2705'); // ✅ ok to leave
+        }
       }
 
       // Also track areaid for fallback
@@ -246,13 +253,17 @@ export default function MapContainer() {
             areaIconFallback.set(areaid, alertTitleToIcon(e.title));
           }
         } else if (!areaFallback.has(areaid)) {
-          areaFallback.set(areaid, 'cleared');
+          const eventTime = new Date(e.timestamp).getTime();
+          if (now - eventTime <= CLEARED_WINDOW_MS) {
+            areaFallback.set(areaid, 'cleared');
+            areaIconFallback.set(areaid, '\u2705');
+          }
         }
       }
     }
 
     return { statusMap, iconMap, areaFallback, areaIconFallback };
-  }, [events]);
+  }, [events, playbackTime]);
 
   const trajectoryGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
     const features: GeoJSON.Feature[] = [];
@@ -601,7 +612,7 @@ export default function MapContainer() {
     const features: GeoJSON.Feature[] = [];
     for (const feature of polygonGeojson.features) {
       const props = feature.properties as Record<string, unknown>;
-      if (!props?.alertIcon || props.severity === 'none' || props.severity === 'cleared') continue;
+      if (!props?.alertIcon || props.severity === 'none') continue;
 
       // Compute centroid of polygon
       const coords = (feature.geometry as GeoJSON.Polygon).coordinates?.[0];
@@ -655,7 +666,7 @@ export default function MapContainer() {
               ['==', ['get', 'severity'], 'critical'], 0.45,
               ['==', ['get', 'severity'], 'moderate'], 0.35,
               ['==', ['get', 'severity'], 'info'], 0.25,
-              ['==', ['get', 'severity'], 'cleared'], 0.2,
+              ['==', ['get', 'severity'], 'cleared'], 0.35,
               // Inactive polygons: invisible at low zoom, faint at high zoom
               ['interpolate', ['linear'], ['zoom'], 7, 0, 8, 0.02],
             ] as unknown as maplibregl.ExpressionSpecification,
@@ -688,7 +699,7 @@ export default function MapContainer() {
               ['==', ['get', 'severity'], 'critical'], 0.9,
               ['==', ['get', 'severity'], 'moderate'], 0.7,
               ['==', ['get', 'severity'], 'info'], 0.5,
-              ['==', ['get', 'severity'], 'cleared'], 0.4,
+              ['==', ['get', 'severity'], 'cleared'], 0.7,
               // Inactive: hidden at low zoom, faint outline at high zoom
               ['interpolate', ['linear'], ['zoom'], 7, 0, 8, 0.1],
             ] as unknown as maplibregl.ExpressionSpecification,
