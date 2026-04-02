@@ -119,15 +119,23 @@ function isMissileEvent(event: { type: string; severity: string; title: string }
 
 function guessOrigin(event: { title: string; lat: number; lng: number }): [number, number] | null {
   const t = event.title.toLowerCase();
+  // Explicit origin keywords in title
   if (t.includes('iran') || t.includes('איראן')) return LAUNCH_ORIGINS.iran;
   if (t.includes('hezbollah') || t.includes('lebanon') || t.includes('חיזבאללה') || t.includes('לבנון')) return LAUNCH_ORIGINS.lebanon;
   if (t.includes('houthi') || t.includes('yemen') || t.includes('חות\'י') || t.includes('תימן')) return LAUNCH_ORIGINS.yemen;
   if (t.includes('gaza') || t.includes('hamas') || t.includes('עזה') || t.includes('חמאס')) return LAUNCH_ORIGINS.gaza;
   if (t.includes('iraq') || t.includes('עיראק')) return LAUNCH_ORIGINS.iraq;
   if (t.includes('syria') || t.includes('סוריה')) return LAUNCH_ORIGINS.syria;
-  // If target is in Israel, default origin is Iran (Iran-Israel war context)
+  // If target is in Israel, guess origin by geographic proximity to borders
   if (event.lat >= 29 && event.lat <= 34 && event.lng >= 34 && event.lng <= 36.5) {
-    return LAUNCH_ORIGINS.iran;
+    // Golan Heights / northeast — likely Syria
+    if (event.lat >= 32.5 && event.lng >= 35.5) return LAUNCH_ORIGINS.syria;
+    // Northern border strip — likely Lebanon
+    if (event.lat >= 32.8) return LAUNCH_ORIGINS.lebanon;
+    // South — near Gaza border
+    if (event.lat <= 31.6 && event.lng <= 34.8) return LAUNCH_ORIGINS.gaza;
+    // Central/south Israel, far from any short-range border — likely Iran or Yemen
+    return null;
   }
   return null;
 }
