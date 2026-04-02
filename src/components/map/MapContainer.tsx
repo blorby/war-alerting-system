@@ -667,8 +667,7 @@ export default function MapContainer() {
               ['==', ['get', 'severity'], 'moderate'], 0.35,
               ['==', ['get', 'severity'], 'info'], 0.25,
               ['==', ['get', 'severity'], 'cleared'], 0.35,
-              // Inactive polygons: invisible at low zoom, faint at high zoom
-              ['interpolate', ['linear'], ['zoom'], 7, 0, 8, 0.02],
+              0.0, // inactive polygons hidden (zoom filtering not supported inside case)
             ] as unknown as maplibregl.ExpressionSpecification,
           },
         },
@@ -700,8 +699,7 @@ export default function MapContainer() {
               ['==', ['get', 'severity'], 'moderate'], 0.7,
               ['==', ['get', 'severity'], 'info'], 0.5,
               ['==', ['get', 'severity'], 'cleared'], 0.7,
-              // Inactive: hidden at low zoom, faint outline at high zoom
-              ['interpolate', ['linear'], ['zoom'], 7, 0, 8, 0.1],
+              0.0, // inactive polygons hidden
             ] as unknown as maplibregl.ExpressionSpecification,
           },
         },
