@@ -134,5 +134,15 @@
   "time.daysAgo": "{n}d ago",
   "time.minutesLong": "{n} minutes ago",
   "time.hoursLong": "about {n} hours ago",
-  "time.daysLong": "{n} days ago"
+  "time.daysLong": "{n} days ago",
+
+  "credibility.high": "High",
+  "credibility.medium": "Medium",
+  "credibility.low": "Low",
+  "credibility.infoTitle": "Credibility Score",
+  "credibility.infoBody": "Credibility is based on source reliability and cross-source confirmation.\n\nSource tiers:\n\u2022 Official (IDF, Oref): 90%\n\u2022 News agencies: 60%\n\u2022 Humanitarian orgs: 55%\n\u2022 OSINT: 45%\n\u2022 Social media: 30%\n\nEvents confirmed by 2+ independent source types get +20% bonus.\n\nHigh (\u226570%): Multiple reliable sources\nMedium (45\u201369%): Single reliable source\nLow (<45%): Unverified social/OSINT",
+  "credibility.filterAll": "All sources",
+  "credibility.filterMedium": "Medium+",
+  "credibility.filterHigh": "High only",
+  "credibility.label": "credibility"
 }

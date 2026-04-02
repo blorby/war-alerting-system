@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { computeEventCredibility } from '@/lib/credibility';
 
 // --- Data interfaces (JSON wire shapes with ISO string dates) ---
 
@@ -144,6 +145,10 @@ interface AppState {
   announcementDismissed: boolean;
   soundEnabled: boolean;
 
+  // Credibility filter
+  minCredibility: number;
+  setMinCredibility: (min: number) => void;
+
   // Live window filter
   liveWindow: '15m' | '1h' | '3h' | null;
   setLiveWindow: (window: '15m' | '1h' | '3h' | null) => void;
@@ -178,6 +183,7 @@ let _lastFront = '';
 let _lastType = '';
 let _lastPlaybackTime: Date | null = null;
 let _lastLiveWindow: string | null = null;
+let _lastMinCredibility = 0;
 let _lastResult: EventData[] = [];
 
 export function selectFilteredEvents(state: AppState): EventData[] {
@@ -186,7 +192,8 @@ export function selectFilteredEvents(state: AppState): EventData[] {
     state.activeFront === _lastFront &&
     state.activeType === _lastType &&
     state.playbackTime === _lastPlaybackTime &&
-    state.liveWindow === _lastLiveWindow
+    state.liveWindow === _lastLiveWindow &&
+    state.minCredibility === _lastMinCredibility
   ) {
     return _lastResult;
   }
@@ -196,6 +203,7 @@ export function selectFilteredEvents(state: AppState): EventData[] {
   _lastType = state.activeType;
   _lastPlaybackTime = state.playbackTime;
   _lastLiveWindow = state.liveWindow;
+  _lastMinCredibility = state.minCredibility;
 
   let filtered = state.events;
 
@@ -232,6 +240,13 @@ export function selectFilteredEvents(state: AppState): EventData[] {
       const cutoff = Date.now() - ms;
       filtered = filtered.filter(e => new Date(e.timestamp).getTime() >= cutoff);
     }
+  }
+
+  // Apply credibility filter
+  if (state.minCredibility > 0) {
+    filtered = filtered.filter(e =>
+      computeEventCredibility(e.source, e.corroborated) >= state.minCredibility
+    );
   }
 
   _lastResult = filtered;
@@ -362,6 +377,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   announcement: null,
   announcementDismissed: false,
   soundEnabled: false,
+
+  minCredibility: 0,
+  setMinCredibility: (min) => set({ minCredibility: min }),
 
   liveWindow: null,
   setLiveWindow: (window) => {

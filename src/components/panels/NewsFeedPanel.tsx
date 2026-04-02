@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { useT } from '@/lib/i18n/useT';
 import PanelContainer from './PanelContainer';
+import { computeNewsCredibility } from '@/lib/credibility';
+import CredibilityBadge from '@/components/ui/CredibilityBadge';
 
 type TabFilter = 'all' | 'news' | 'official statement';
 
@@ -70,6 +72,8 @@ export default function NewsFeedPanel() {
                   <span className="font-medium">{item.source}</span>
                   <span>·</span>
                   <span>{timeAgo(item.timestamp, t)}</span>
+                  <span>·</span>
+                  <CredibilityBadge score={computeNewsCredibility(item.source)} />
                 </div>
               </div>
             </div>

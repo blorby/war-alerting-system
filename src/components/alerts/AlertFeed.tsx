@@ -2,6 +2,8 @@
 
 import { useAppStore, selectFilteredEvents } from "@/lib/store";
 import { useT } from "@/lib/i18n/useT";
+import { computeEventCredibility } from "@/lib/credibility";
+import CredibilityBadge from "@/components/ui/CredibilityBadge";
 
 const severityConfig = {
   critical: { key: "alertFeed.critical", color: "text-critical", bg: "bg-critical/10", dot: "bg-critical" },
@@ -71,11 +73,7 @@ export default function AlertFeed() {
                   <span className={`text-xs font-bold ${config.color}`}>
                     {t(config.key)}
                   </span>
-                  {alert.corroborated ? (
-                    <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-green-500/20 text-green-400" title={t("alertFeed.confirmed")}>{t("alertFeed.confirmed")}</span>
-                  ) : (
-                    <span className="rounded px-1 py-0.5 text-[9px] font-bold bg-yellow-500/20 text-yellow-400" title={t("alertFeed.singleSrc")}>{t("alertFeed.singleSrc")}</span>
-                  )}
+                  <CredibilityBadge score={computeEventCredibility(alert.source, alert.corroborated)} />
                   <span className="text-xs text-muted">
                     {formatTimeAgo(new Date(alert.timestamp), t)}
                   </span>

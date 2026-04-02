@@ -134,5 +134,15 @@
   "time.daysAgo": "לפני {n} ימים",
   "time.minutesLong": "לפני {n} דקות",
   "time.hoursLong": "לפני כ-{n} שעות",
-  "time.daysLong": "לפני {n} ימים"
+  "time.daysLong": "לפני {n} ימים",
+
+  "credibility.high": "גבוה",
+  "credibility.medium": "בינוני",
+  "credibility.low": "נמוך",
+  "credibility.infoTitle": "ציון אמינות",
+  "credibility.infoBody": "האמינות מבוססת על מהימנות המקור ואישור ממספר מקורות.\n\nדירוג מקורות:\n\u2022 רשמי (צה\"ל, פיקוד העורף): 90%\n\u2022 סוכנויות חדשות: 60%\n\u2022 ארגונים הומניטריים: 55%\n\u2022 מודיעין פתוח: 45%\n\u2022 רשתות חברתיות: 30%\n\nאירועים שאושרו ע\"י 2+ סוגי מקורות מקבלים בונוס +20%.\n\nגבוה (\u226570%): מספר מקורות מהימנים\nבינוני (45\u201369%): מקור מהימן יחיד\nנמוך (<45%): רשתות חברתיות/מודיעין פתוח לא מאומת",
+  "credibility.filterAll": "כל המקורות",
+  "credibility.filterMedium": "בינוני+",
+  "credibility.filterHigh": "גבוה בלבד",
+  "credibility.label": "אמינות"
 }

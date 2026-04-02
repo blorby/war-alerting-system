@@ -2,6 +2,8 @@
 
 import { useAppStore } from '@/lib/store';
 import PanelContainer from './PanelContainer';
+import { computeNewsCredibility } from '@/lib/credibility';
+import CredibilityBadge from '@/components/ui/CredibilityBadge';
 
 const timeAgo = (ts: string) => {
   const diff = Date.now() - new Date(ts).getTime();
@@ -59,6 +61,8 @@ export default function DefenseNewsPanel() {
                 <span className="font-medium">{item.source}</span>
                 <span>·</span>
                 <span>{timeAgo(item.timestamp)}</span>
+                <span>·</span>
+                <CredibilityBadge score={computeNewsCredibility(item.source)} />
               </div>
             </div>
           </div>

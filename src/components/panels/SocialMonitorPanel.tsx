@@ -3,6 +3,7 @@
 import { useAppStore } from '@/lib/store';
 import { useT } from '@/lib/i18n/useT';
 import PanelContainer from './PanelContainer';
+import CredibilityBadge from '@/components/ui/CredibilityBadge';
 
 function PlatformIcon({ platform }: { platform: string }) {
   const p = platform.toLowerCase();
@@ -69,7 +70,7 @@ export default function SocialMonitorPanel() {
             <div className="flex items-center justify-between mt-0.5 text-muted">
               <span>{timeAgo(post.timestamp, t)}</span>
               <div className="flex items-center gap-2">
-                <span className="text-[10px]">{post.credibility}% {t('panels.credibility')}</span>
+                <CredibilityBadge score={post.credibility} />
                 {post.messageUrl && (
                   <a
                     href={post.messageUrl}

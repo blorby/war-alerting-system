@@ -11,6 +11,7 @@ import cityPolygonsData from '@/lib/geo/city-polygons.json';
 import MapFocus from "./MapFocus";
 import MapLayers from "./MapLayers";
 import MapLegend from "./MapLegend";
+import { computeEventCredibility, getCredibilityLevel } from "@/lib/credibility";
 
 const COUNTRY_LABELS: { name: string; lng: number; lat: number }[] = [
   { name: 'ISRAEL', lng: 35.0, lat: 31.5 },
@@ -385,6 +386,7 @@ export default function MapContainer() {
           source: e.source,
           timestamp: e.timestamp,
           corroborated: e.corroborated ? "true" : "false",
+          credibility: String(computeEventCredibility(e.source, e.corroborated)),
         },
       })),
     };
@@ -528,9 +530,11 @@ export default function MapContainer() {
         const sevLabel = severityLabels[p.severity] ?? p.severity;
         const typeLabel = typeLabels[p.type] ?? p.type;
 
-        const reliabilityTag = p.corroborated === "true"
-          ? `<span style="background:rgba(34,197,94,0.2);color:#4ade80;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:bold">CONFIRMED — MULTIPLE SOURCES</span>`
-          : `<span style="background:rgba(234,179,8,0.2);color:#facc15;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:bold">SINGLE SOURCE — LESS RELIABLE</span>`;
+        const credScore = Number(p.credibility) || 0;
+        const credColor = credScore >= 70 ? '#4ade80' : credScore >= 45 ? '#facc15' : '#fb923c';
+        const credBg = credScore >= 70 ? 'rgba(34,197,94,0.2)' : credScore >= 45 ? 'rgba(234,179,8,0.2)' : 'rgba(249,115,22,0.2)';
+        const credLabel = credScore >= 70 ? 'HIGH' : credScore >= 45 ? 'MEDIUM' : 'LOW';
+        const reliabilityTag = `<span style="background:${credBg};color:${credColor};padding:1px 4px;border-radius:3px;font-size:9px;font-weight:bold">${credScore}% CREDIBILITY \u2014 ${credLabel}</span>`;
 
         new maplibregl.Popup({ closeButton: true, className: "event-popup", maxWidth: "320px" })
           .setLngLat(e.lngLat)

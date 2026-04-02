@@ -8,6 +8,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import NewsTicker from "@/components/layout/NewsTicker";
 import FrontFilter from "@/components/filters/FrontFilter";
 import TypeFilter from "@/components/filters/TypeFilter";
+import CredibilityFilter from "@/components/filters/CredibilityFilter";
 import AlertFeed from "@/components/alerts/AlertFeed";
 import ThreatPanel from "@/components/threats/ThreatPanel";
 import TimelineBar from "@/components/timeline/TimelineBar";
@@ -72,6 +73,7 @@ export default function Dashboard() {
         <Sidebar mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)}>
           <FrontFilter />
           <TypeFilter />
+          <CredibilityFilter />
           <AlertFeed />
           <ThreatPanel />
         </Sidebar>
