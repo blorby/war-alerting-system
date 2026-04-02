@@ -129,12 +129,13 @@ function guessOrigin(event: { title: string; lat: number; lng: number }): [numbe
   if (event.lat >= 29 && event.lat <= 34 && event.lng >= 34 && event.lng <= 36.5) {
     // Golan Heights / northeast — likely Syria
     if (event.lat >= 32.5 && event.lng >= 35.5) return LAUNCH_ORIGINS.syria;
-    // Northern border strip — likely Lebanon
+    // Northern border (above Haifa) — likely Lebanon
     if (event.lat >= 32.8) return LAUNCH_ORIGINS.lebanon;
-    // South — near Gaza border
-    if (event.lat <= 31.6 && event.lng <= 34.8) return LAUNCH_ORIGINS.gaza;
-    // Central/south Israel, far from any short-range border — likely Iran or Yemen
-    return null;
+    // South near Gaza envelope — likely Gaza
+    if (event.lat <= 31.55 && event.lng <= 34.75) return LAUNCH_ORIGINS.gaza;
+    // Everything else deep inside Israel (central, Tel Aviv, Jerusalem, Jordan Valley)
+    // is consistent with long-range Iranian ballistic missiles
+    return LAUNCH_ORIGINS.iran;
   }
   return null;
 }
