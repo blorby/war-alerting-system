@@ -117,7 +117,12 @@ async function geocodeBatch(
   }
 
   try {
-    const results = JSON.parse(textBlock.text.trim()) as GeoResult[];
+    // Strip markdown code fences that the LLM occasionally wraps around JSON
+    let jsonText = textBlock.text.trim();
+    if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
+    }
+    const results = JSON.parse(jsonText) as GeoResult[];
     return results;
   } catch (err) {
     console.error(

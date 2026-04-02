@@ -45,6 +45,7 @@ beforeEach(() => {
     playbackSpeed: 1,
     soundEnabled: false,
     announcementDismissed: false,
+    minCredibility: 0,
   });
 });
 
@@ -347,5 +348,57 @@ describe('selectFilteredEvents', () => {
     const state2 = makeState({ events, activeFront: 'iran', activeType: 'all' });
     const r2 = selectFilteredEvents(state2);
     expect(r1).not.toBe(r2);
+  });
+});
+
+// ─── Credibility filtering in selectFilteredEvents ──────────────
+
+describe('selectFilteredEvents credibility filtering', () => {
+  it('minCredibility=0 returns all events', () => {
+    const events = [
+      makeEvent({ id: '1', source: 'oref-current', corroborated: false }),  // official 90
+      makeEvent({ id: '2', source: 'toi', corroborated: false }),           // news 60
+      makeEvent({ id: '3', source: 'telegram-idf', corroborated: false }), // social 30
+      makeEvent({ id: '4', source: 'some-random', corroborated: false }),   // unknown 20
+    ];
+    const state = makeState({ events, minCredibility: 0 });
+    const result = selectFilteredEvents(state);
+    expect(result).toHaveLength(4);
+  });
+
+  it('minCredibility=70 filters out low-credibility events', () => {
+    const events = [
+      makeEvent({ id: '1', source: 'oref-current', corroborated: false }),  // official 90 -> pass
+      makeEvent({ id: '2', source: 'toi', corroborated: true }),            // news corr 80 -> pass
+      makeEvent({ id: '3', source: 'telegram-idf', corroborated: false }), // social 30 -> filtered
+      makeEvent({ id: '4', source: 'toi', corroborated: false }),           // news 60 -> filtered
+      makeEvent({ id: '5', source: 'some-random', corroborated: false }),   // unknown 20 -> filtered
+    ];
+    const state = makeState({ events, minCredibility: 70 });
+    const result = selectFilteredEvents(state);
+    expect(result).toHaveLength(2);
+    expect(result.map(e => e.id).sort()).toEqual(['1', '2']);
+  });
+
+  it('minCredibility=45 filters out very low credibility events', () => {
+    const events = [
+      makeEvent({ id: '1', source: 'oref-current', corroborated: false }),  // official 90 -> pass
+      makeEvent({ id: '2', source: 'toi', corroborated: false }),           // news 60 -> pass
+      makeEvent({ id: '3', source: 'telegram-idf', corroborated: true }),  // social corr 50 -> pass
+      makeEvent({ id: '4', source: 'telegram-idf', corroborated: false }), // social 30 -> filtered
+      makeEvent({ id: '5', source: 'some-random', corroborated: true }),    // unknown corr 40 -> filtered
+    ];
+    const state = makeState({ events, minCredibility: 45 });
+    const result = selectFilteredEvents(state);
+    expect(result).toHaveLength(3);
+    expect(result.map(e => e.id).sort()).toEqual(['1', '2', '3']);
+  });
+
+  it('setMinCredibility action updates the store state', () => {
+    expect(useAppStore.getState().minCredibility).toBe(0);
+    useAppStore.getState().setMinCredibility(70);
+    expect(useAppStore.getState().minCredibility).toBe(70);
+    useAppStore.getState().setMinCredibility(0);
+    expect(useAppStore.getState().minCredibility).toBe(0);
   });
 });
