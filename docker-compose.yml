@@ -40,6 +40,10 @@ services:
     environment:
       - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
       - OREF_BASE_URL=${OREF_BASE_URL:-https://www.oref.org.il}
+      - SSH_PROXY_HOST=${SSH_PROXY_HOST:-curl@192.168.5.249}
+    volumes:
+      - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
+      - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,6 +57,10 @@ services:
     environment:
       - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
       - OREF_BASE_URL=${OREF_BASE_URL:-https://www.oref.org.il}
+      - SSH_PROXY_HOST=${SSH_PROXY_HOST:-curl@192.168.5.249}
+    volumes:
+      - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
+      - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -131,6 +139,10 @@ services:
     command: ["node", "dist/workers/web-scrapers.js"]
     environment:
       - DATABASE_URL=postgresql://was:${POSTGRES_PASSWORD:-was_dev_password}@postgres:5432/was
+      - SSH_PROXY_HOST=${SSH_PROXY_HOST:-curl@192.168.5.249}
+    volumes:
+      - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
+      - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
     depends_on:
       postgres:
         condition: service_healthy

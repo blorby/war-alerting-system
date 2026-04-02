@@ -8,7 +8,7 @@ export interface RssFeedConfig {
 
 export const RSS_FEEDS: RssFeedConfig[] = [
   // Israeli news
-  { url: 'https://www.timesofisrael.com/feed/', name: 'Times of Israel', source: 'toi', category: 'israeli_news', language: 'en' },
+  { url: 'https://news.google.com/rss/search?q=%22Times+of+Israel%22+Israel&hl=en-US&gl=US&ceid=US:en', name: 'Times of Israel (via Google News)', source: 'toi', category: 'israeli_news', language: 'en' },
   { url: 'https://rss.jpost.com/rss/rssfeedsheadlines.aspx', name: 'JPost Headlines', source: 'jpost-headlines', category: 'israeli_news', language: 'en' },
   { url: 'https://rss.jpost.com/rss/rssfeedsisraelnews.aspx', name: 'JPost Israel News', source: 'jpost-israel', category: 'israeli_news', language: 'en' },
   { url: 'https://rss.jpost.com/rss/rssfeedsgaza.aspx', name: 'JPost Gaza', source: 'jpost-gaza', category: 'israeli_news', language: 'en' },
@@ -23,13 +23,13 @@ export const RSS_FEEDS: RssFeedConfig[] = [
   { url: 'https://www.aljazeera.com/xml/rss/all.xml?region=middle-east', name: 'Al Jazeera Middle East', source: 'aljazeera-mideast', category: 'international', language: 'en' },
   { url: 'https://www.aljazeera.com/xml/rss/all.xml', name: 'Al Jazeera Global', source: 'aljazeera-global', category: 'international', language: 'en' },
   // Iran / Military / Defense
-  { url: 'https://www.centcom.mil/RSS/', name: 'CENTCOM', source: 'centcom', category: 'iran_military', language: 'en' },
-  { url: 'https://www.act.nato.int/article-rss-xml/', name: 'NATO ACT', source: 'nato-act', category: 'iran_military', language: 'en' },
+  { url: 'https://breakingdefense.com/feed/', name: 'Breaking Defense', source: 'breaking-defense', category: 'iran_military', language: 'en' },
   { url: 'https://www.dvidshub.net/rss/unit/72/?mkt=en-us', name: 'DVIDS CENTCOM', source: 'dvids-centcom', category: 'iran_military', language: 'en' },
   { url: 'https://www.israelnationalnews.com/Rss.aspx?act=.1&cat=25', name: 'INN Security', source: 'inn-security', category: 'defense', language: 'en' },
   // Iran OSINT
   { url: 'https://en.radiofarda.com/api/z-pqpiev-qpp', name: 'Radio Farda Iran News', source: 'radiofarda', category: 'iran_osint', language: 'en' },
-  { url: 'https://www.iaea.org/feeds/iaea-newscenter-news', name: 'IAEA News', source: 'iaea', category: 'iran_osint', language: 'en' },
+  { url: 'https://news.google.com/rss/search?q=IAEA+Iran+nuclear&hl=en-US&gl=US&ceid=US:en', name: 'IAEA & Iran Nuclear (via Google News)', source: 'iaea', category: 'iran_osint', language: 'en' },
+  { url: 'https://www.armscontrol.org/rss.xml', name: 'Arms Control Association', source: 'aca', category: 'iran_osint', language: 'en' },
   // Hebrew news aggregators
   { url: 'http://rotter.net/rss/rotternews.xml', name: 'Rotter News', source: 'rotter', category: 'israeli_news', language: 'he' },
   { url: 'https://www.ynet.co.il/Integration/StoryRss2.xml', name: 'Ynet News', source: 'ynet-news', category: 'israeli_news', language: 'he' },

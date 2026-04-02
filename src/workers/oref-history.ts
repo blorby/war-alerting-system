@@ -7,6 +7,7 @@ import { mapCategory, parseAsJerusalem } from './lib/normalize';
 import { orefHistoryHash } from './lib/dedup';
 import { events } from '../lib/db/schema';
 import districts from '../lib/geo/districts.json';
+import { proxyFetch } from './lib/ssh-fetch';
 
 const BASE_URL = process.env.OREF_BASE_URL || 'https://www.oref.org.il';
 const HISTORY_URL = `${BASE_URL}/WarningMessages/alert/History/AlertsHistory.json`;
@@ -41,13 +42,7 @@ const clearancePool = new Pool({ connectionString: process.env.DATABASE_URL });
 const clearanceDb = drizzle(clearancePool, { schema: { events } });
 
 async function collect(): Promise<NewEvent[]> {
-  const response = await fetch(HISTORY_URL, { headers: HEADERS });
-
-  if (!response.ok) {
-    throw new Error(`Oref history API returned ${response.status}`);
-  }
-
-  const raw = await response.text();
+  const raw = await proxyFetch(HISTORY_URL, HEADERS);
   const cleaned = stripBom(raw);
 
   // Empty response means no history records

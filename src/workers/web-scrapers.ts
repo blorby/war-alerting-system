@@ -6,6 +6,7 @@ import { parseSite, ScrapedItem } from './lib/scraper-parser';
 import { scraperDedupHash } from './lib/scraper-dedup';
 import { NewEvent } from './lib/base-collector';
 import { geocodeText } from './lib/geocode';
+import { needsProxy, proxyFetch } from './lib/ssh-fetch';
 
 const FETCH_TIMEOUT_MS = 15_000;
 const USER_AGENT =
@@ -44,17 +45,23 @@ function itemToEvent(item: ScrapedItem, site: ScraperSiteConfig): NewEvent {
 }
 
 async function fetchHtml(url: string): Promise<string> {
+  const headers: Record<string, string> = {
+    'User-Agent': USER_AGENT,
+    'Accept-Language': 'en',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  };
+
+  if (needsProxy(url)) {
+    return proxyFetch(url, headers, FETCH_TIMEOUT_MS);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept-Language': 'en',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
+      headers,
     });
 
     if (!response.ok) {
