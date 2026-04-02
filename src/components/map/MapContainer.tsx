@@ -854,7 +854,7 @@ export default function MapContainer() {
 
       {/* Map overlay controls */}
       <div className="absolute right-3 top-3 flex flex-col gap-2">
-        <MapLayers />
+        <MapLayers mapRef={mapRef} />
         <MapFocus onFocusChange={handleFocusChange} />
         <MapLegend />
       </div>
