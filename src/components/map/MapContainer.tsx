@@ -75,6 +75,8 @@ const HEATMAP_LAYER = "events-heatmap";
 const POLYGONS_SOURCE = 'alert-polygons-source';
 const POLYGONS_FILL_LAYER = 'alert-polygons-fill';
 const POLYGONS_LINE_LAYER = 'alert-polygons-line';
+const POLYGONS_ICONS_SOURCE = 'alert-polygons-icons-source';
+const POLYGONS_ICONS_LAYER = 'alert-polygons-icons';
 
 const TRAJECTORIES_SOURCE = 'trajectories-source';
 const TRAJECTORIES_LAYER = 'trajectories-line';
@@ -94,6 +96,17 @@ const LAUNCH_ORIGINS: Record<string, [number, number]> = {
 
 // Hebrew alert titles that indicate missile/rocket attacks
 const MISSILE_ALERT_TITLES = ['ירי רקטות וטילים', 'חדירת כלי טיס עוין'];
+
+// Map ORef alert titles to icon categories
+function alertTitleToIcon(title: string): string {
+  if (title.includes('ירי רקטות וטילים')) return '\u{1F680}'; // 🚀 missile
+  if (title.includes('חדירת כלי טיס עוין')) return '\u{1F6E9}'; // 🛩 drone/UAV
+  if (title.includes('חדירת מחבלים')) return '\u{1F52B}'; // 🔫 infiltration
+  if (title.includes('רעידת אדמה')) return '\u3030'; // 〰 seismic
+  if (title.includes('צונאמי')) return '\u{1F30A}'; // 🌊 tsunami
+  if (title.includes('חומרים מסוכנים')) return '\u2623'; // ☣ hazmat
+  return '\u26A0'; // ⚠ generic alert
+}
 
 function isMissileEvent(event: { type: string; severity: string; title: string }): boolean {
   if (event.type === 'strike' || event.type === 'missile') return true;
@@ -195,7 +208,9 @@ export default function MapContainer() {
   const cityAlertStatus = useMemo(() => {
     const districts = districtsData as Record<string, { areaid: number }>;
     const statusMap = new Map<string, string>();   // cityName → severity
+    const iconMap = new Map<string, string>();      // cityName → icon emoji
     const areaFallback = new Map<number, string>(); // areaid → severity (for unmatched polygons)
+    const areaIconFallback = new Map<number, string>(); // areaid → icon emoji
     const severityRank: Record<string, number> = { critical: 3, moderate: 2, info: 1, cleared: 0 };
 
     const securityTypes = new Set(['alert', 'strike', 'missile', 'thermal']);
@@ -214,6 +229,7 @@ export default function MapContainer() {
         const currentRank = current ? (severityRank[current] ?? 0) : -1;
         if (newRank > currentRank) {
           statusMap.set(name, e.severity);
+          iconMap.set(name, alertTitleToIcon(e.title));
         }
       } else if (!statusMap.has(name)) {
         statusMap.set(name, 'cleared');
@@ -227,6 +243,7 @@ export default function MapContainer() {
           const currentAreaRank = currentArea ? (severityRank[currentArea] ?? 0) : -1;
           if (newRank > currentAreaRank) {
             areaFallback.set(areaid, e.severity);
+            areaIconFallback.set(areaid, alertTitleToIcon(e.title));
           }
         } else if (!areaFallback.has(areaid)) {
           areaFallback.set(areaid, 'cleared');
@@ -234,7 +251,7 @@ export default function MapContainer() {
       }
     }
 
-    return { statusMap, areaFallback };
+    return { statusMap, iconMap, areaFallback, areaIconFallback };
   }, [events]);
 
   const trajectoryGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
@@ -555,7 +572,7 @@ export default function MapContainer() {
   // --- Alert zone polygons (static import, no async fetch) ---
   const polygonGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
     const base = cityPolygonsData as unknown as GeoJSON.FeatureCollection;
-    const { statusMap, areaFallback } = cityAlertStatus;
+    const { statusMap, iconMap, areaFallback, areaIconFallback } = cityAlertStatus;
     return {
       type: 'FeatureCollection',
       features: base.features.map((feature) => {
@@ -567,14 +584,43 @@ export default function MapContainer() {
         const severity = statusMap.get(name)
           ?? (areaid ? areaFallback.get(areaid) : undefined)
           ?? 'none';
+        const alertIcon = iconMap.get(name)
+          ?? (areaid ? areaIconFallback.get(areaid) : undefined)
+          ?? '';
 
         return {
           ...feature,
-          properties: { ...props, severity },
+          properties: { ...props, severity, alertIcon },
         };
       }),
     };
   }, [cityAlertStatus]);
+
+  // Point features at polygon centroids for alert type icons
+  const polygonIconsGeojson = useMemo<GeoJSON.FeatureCollection>(() => {
+    const features: GeoJSON.Feature[] = [];
+    for (const feature of polygonGeojson.features) {
+      const props = feature.properties as Record<string, unknown>;
+      if (!props?.alertIcon || props.severity === 'none' || props.severity === 'cleared') continue;
+
+      // Compute centroid of polygon
+      const coords = (feature.geometry as GeoJSON.Polygon).coordinates?.[0];
+      if (!coords || coords.length < 3) continue;
+      let sumLng = 0, sumLat = 0;
+      const n = coords.length - 1; // exclude closing point
+      for (let i = 0; i < n; i++) {
+        sumLng += coords[i][0];
+        sumLat += coords[i][1];
+      }
+
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [sumLng / n, sumLat / n] },
+        properties: { alertIcon: props.alertIcon, severity: props.severity },
+      });
+    }
+    return { type: 'FeatureCollection', features };
+  }, [polygonGeojson]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -652,6 +698,35 @@ export default function MapContainer() {
       );
     }
   }, [polygonGeojson, mapReady]);
+
+  // --- Alert zone type icons (rendered at polygon centroids) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const source = map.getSource(POLYGONS_ICONS_SOURCE) as maplibregl.GeoJSONSource | undefined;
+
+    if (source) {
+      source.setData(polygonIconsGeojson);
+    } else {
+      map.addSource(POLYGONS_ICONS_SOURCE, { type: 'geojson', data: polygonIconsGeojson });
+
+      map.addLayer({
+        id: POLYGONS_ICONS_LAYER,
+        type: 'symbol',
+        source: POLYGONS_ICONS_SOURCE,
+        layout: {
+          'text-field': ['get', 'alertIcon'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 6, 12, 10, 18],
+          'text-allow-overlap': true,
+          'text-ignore-placement': false,
+        },
+        paint: {
+          'text-opacity': 0.9,
+        },
+      });
+    }
+  }, [polygonIconsGeojson, mapReady]);
 
   // --- Missile/strike trajectory arcs ---
   useEffect(() => {
