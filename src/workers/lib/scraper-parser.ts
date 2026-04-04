@@ -56,8 +56,22 @@ function stripHtml(html: string): string {
     // Also remove any literal `<` or `>` that might appear after decoding entities to avoid
     // reintroducing HTML tag delimiters via multi-step sanitization.
     .replace(/&quot;/g, '"')
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_: string, hex: string) => {
+      const code = parseInt(hex, 16);
+      // Do not decode to `<` or `>` to avoid reintroducing tag delimiters.
+      if (code === 0x3c || code === 0x3e) {
+        return '';
+      }
+      return String.fromCharCode(code);
+    })
+    .replace(/&#(\d+);/g, (_: string, dec: string) => {
+      const code = parseInt(dec, 10);
+      // Do not decode to `<` or `>` to avoid reintroducing tag delimiters.
+      if (code === 60 || code === 62) {
+        return '';
+      }
+      return String.fromCharCode(code);
+    })
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/[<>]/g, '')
